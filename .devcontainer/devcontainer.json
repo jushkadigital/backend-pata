@@ -1,0 +1,28 @@
+{
+  "name": "Java Container APP",
+  "image": "ubuntu:24.04",
+  "features": {
+    "ghcr.io/devcontainers/features/java:1": {
+      "version": "21",
+      "distribution": "tem",
+      "installGradle": true,
+      "gradleVersion": "8.12.1",
+      "installMaven": true,
+      "mavenVersion": "3.9.9"
+    },
+    "ghcr.io/rocker-org/devcontainer-features/apt-packages:1": {
+      "packages": "git,wget,curl,ripgrep,python3,g++,xclip"
+    },
+    "ghcr.io/s1n7ax/devcontainer-features/neovim:2": {}
+  },
+  "postCreateCommand": "set -e && apt-get update && apt-get install -y ca-certificates curl gnupg lsb-release && curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg && echo \"deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\" > /etc/apt/sources.list.d/docker.list && apt-get update && apt-get install -y docker-ce-cli ",
+  "mounts": [
+    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+  ],
+  "appPort": [
+    8081
+  ],
+  "runArgs": [
+    "--network=host"
+  ]
+}

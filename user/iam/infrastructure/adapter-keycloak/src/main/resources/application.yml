@@ -1,0 +1,18 @@
+'%prod':
+    keycloak:
+        url: http://localhost:8180
+    quarkus:
+        oidc:
+            auth-server-url: ${keycloak.url}/realms/quarkus
+quarkus:
+    compose:
+        devservices:
+            files: compose-devservices.yml
+    keycloak:
+        devservices:
+            enabled: false
+        admin-client: 
+            server-url: http://localhost:8080
+    log:
+        category:
+            level: ERROR

@@ -1,0 +1,7 @@
+'%prod':
+    keycloak:
+        url: http://localhost:8180
+    quarkus:
+        oidc:
+            auth-server-url: ${keycloak.url}/realms/quarkus
+

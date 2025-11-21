@@ -1,0 +1,45 @@
+version: '3.8'
+services:
+  # Define el servicio para tu aplicación
+  app:
+    image: quarkus/quarkus-resteasy
+    ports:
+      - "8080:8081"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Configuración de la conexión a la base de datos
+      DB_USERNAME: quarkus
+      DB_PASSWORD: quarkus
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: quarkus
+      QUARKUS_PROFILE: prod
+
+  # Define el servicio para la base de datos PostgreSQL
+  db:
+    image: postgres:17
+    container_name: bootloader-db
+    restart: always
+    environment:
+      POSTGRES_USER: quarkus
+      POSTGRES_PASSWORD: quarkus
+      POSTGRES_DB: quarkus
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      
+volumes:
+  postgres_data:
+
+  networks:
+  quarkus-dev:
+    name: quarkus-dev
+    driver: bridge

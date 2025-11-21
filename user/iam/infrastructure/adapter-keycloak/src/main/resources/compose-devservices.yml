@@ -1,0 +1,20 @@
+version: "3.8"
+services:
+  keycloak:
+    # 🐳 Imagen a usar
+    image: quay.io/keycloak/keycloak:26.4.2
+    container_name: keycloak-dev-server
+    
+    # ⚙️ Variables de entorno (-e del docker run)
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      
+    # 🌐 Mapeo de puertos (-p del docker run)
+    # Mapea el puerto 8080 del contenedor al puerto 8080 en 127.0.0.1 (localhost)
+    ports:
+      - "127.0.0.1:8080:8080"
+      
+    # 🚀 Comando a ejecutar al iniciar
+    # Este es el 'start-dev' que venía al final del comando run
+    command: start-dev

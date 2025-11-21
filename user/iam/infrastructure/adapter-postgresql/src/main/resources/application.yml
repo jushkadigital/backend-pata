@@ -1,0 +1,19 @@
+quarkus:
+  # configure your datasource
+  datasource:
+    db-kind: postgresql
+  
+  hibernate-orm:
+    # drop and create the database at startup (use `update` to only update the schema)
+    default-schema: quarkus   
+    schema-management:
+        strategy: validate
+
+"%dev":
+  quarkus:
+    flyway:
+      baseline-on-migrate: true
+      migrate-at-start: true
+      create-schemas: true
+      clean-at-start: true
+      schemas: quarkus

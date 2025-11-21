@@ -1,0 +1,42 @@
+version: '3.8'
+
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak
+    ports:
+      - 5432:5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4.2  # Usa la versión que necesites, esta es reciente
+    environment:
+      KC_DB: postgres
+      KC_DB_URL_HOST: postgres
+      KC_DB_URL_DATABASE: keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak
+      KC_DB_SCHEMA: public
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_PORT: 8080
+      KC_HEALTH_ENABLED: true
+      KC_HTTP_ENABLED: true
+      KC_HOSTNAME_STRICT: false
+      KC_HOSTNAME_STRICT_HTTPS: false
+    depends_on:
+      - postgres
+    volumes:
+      - /home/chamba/Desktop/java/turismoEcommerce/producto/bootloader/imports:/opt/keycloak/data/import
+    ports:
+      - 8080:8080
+    entrypoint: ["/bin/sh"]
+    command: -c "pwd && echo 'buscando' && ls /opt/keycloak/data/import && echo 'Listado completado' && exec /opt/keycloak/bin/kc.sh start-dev --import-realm"
+volumes:
+  postgres_data:
+
