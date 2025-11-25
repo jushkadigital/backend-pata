@@ -53,4 +53,24 @@ public class KeycloakACL implements IdentityProvider {
 
   }
 
+  @Override
+  public void assingClientRoleToGroup(String groupName, String clientId, String roleName) {
+    keycloakService.assignClientRoleToGroup(groupName, clientId, roleName);
+  }
+
+  @Override
+  public String getToken() {
+    return keycloakService.getToken();
+  }
+
+  @Override
+  public String getRealm() {
+    return keycloakService.getRealm().toString();
+  }
+
+  @Override
+  public void configurarWebhook(String url) {
+    keycloakService.configurarWebhook(url);
+  }
+
 }

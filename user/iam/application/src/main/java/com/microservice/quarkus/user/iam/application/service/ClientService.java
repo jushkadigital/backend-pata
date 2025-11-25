@@ -30,4 +30,21 @@ public class ClientService {
     return "";
   }
 
+  @Transactional
+  public void assingClientRoleToGroup(String groupName, String clientId, String roleName) {
+    keycloakClient.assingClientRoleToGroup(groupName, clientId, roleName);
+  }
+
+  public String getToken() {
+    return keycloakClient.getToken();
+  }
+
+  public String getRealm() {
+    return keycloakClient.getRealm();
+  }
+
+  public void configurarWebhook(String url) {
+    keycloakClient.configurarWebhook(url);
+  }
+
 }

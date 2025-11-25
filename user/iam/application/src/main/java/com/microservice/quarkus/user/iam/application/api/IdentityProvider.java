@@ -17,4 +17,11 @@ public interface IdentityProvider {
 
   public String createClient(String name);
 
+  public void assingClientRoleToGroup(String groupName, String clientId, String roleName);
+
+  public String getToken();
+
+  public String getRealm();
+
+  public void configurarWebhook(String url);
 }

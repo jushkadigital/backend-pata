@@ -71,6 +71,13 @@ public class KeycloakResource {
     return roleRepository.getAllById(clientId).stream().map(Role::getName).collect(Collectors.toList());
   }
 
+  @GET
+  @Path("/gettoken")
+  public String obtenerTokenAdmin() {
+    String token = userService.getToken();
+    return token;
+  }
+
 }
 
 // Clase DTO simple para la request de creación (ajusta según necesidades)

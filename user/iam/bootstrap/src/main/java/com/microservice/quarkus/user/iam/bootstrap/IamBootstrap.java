@@ -24,6 +24,14 @@ public class IamBootstrap {
   void init() {
     System.out.println("INICIANDOOOOOOOOOOOOO");
 
+    clientService.getRealm();
+
+    System.out.println("Realm creado");
+
+    clientService.configurarWebhook("https://webhook.site/7b00dbf6-a71a-4712-b144-ea3c0355fed9");
+
+    clientService.getToken();
+
     String idOne = clientService.register("dashboard-client");
     System.out.println(idOne);
 
@@ -31,6 +39,8 @@ public class IamBootstrap {
     for (String role : roles) {
       roleService.register(role, "GGA OE OEOE OO", idOne);
     }
+
+    clientService.assingClientRoleToGroup("admin", idOne, "CATALOG_VIEW");
     System.out.println("IamBootstrap CARGA DE ROLES COMPLETA");
   }
 }

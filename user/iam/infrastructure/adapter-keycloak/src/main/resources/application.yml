@@ -7,10 +7,13 @@
 quarkus:
     compose:
         devservices:
+            follow-container-logs: true 
             files: compose-devservices.yml
+
     keycloak:
         devservices:
             enabled: false
+            follow-container-logs: true 
         admin-client: 
             server-url: http://localhost:8080
     log:

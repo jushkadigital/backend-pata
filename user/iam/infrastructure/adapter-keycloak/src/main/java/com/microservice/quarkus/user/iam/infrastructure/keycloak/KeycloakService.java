@@ -16,7 +16,9 @@ import org.keycloak.admin.client.resource.UsersResource;
 import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.GroupRepresentation;
+import org.keycloak.representations.idm.RealmRepresentation;
 import org.keycloak.representations.idm.RoleRepresentation;
+import org.keycloak.representations.idm.RolesRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 
 import jakarta.inject.Inject;
@@ -24,15 +26,24 @@ import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.net.http.HttpRequest.BodyPublishers;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 import javax.management.relation.Role;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.microservice.quarkus.user.iam.domain.UserType;
 
 @ApplicationScoped
@@ -71,12 +82,6 @@ public class KeycloakService {
 
       user.setEmail(email);
       user.setEnabled(true);
-
-      if (roleType == UserType.ADMIN) {
-        user.setGroups(List.of("admin"));
-      } else {
-        user.setGroups(List.of("passenger"));
-      }
 
       CredentialRepresentation credential = new CredentialRepresentation();
       credential.setType("password");
@@ -136,14 +141,13 @@ public class KeycloakService {
 
   public String createClient(String name) {
     ClientRepresentation clientRep = new ClientRepresentation();
-    clientRep.setClientId(UUID.randomUUID().toString());
     clientRep.setName(name);
     clientRep.setEnabled(true);
     clientRep.setDirectAccessGrantsEnabled(true);
     clientRep.setPublicClient(true);
     clientRep.setSecret("admin");
 
-    clientRep.setRedirectUris(Arrays.asList("http://localhost:8081/*"));
+    clientRep.setRedirectUris(Arrays.asList("http://localhost:8081/*", "https://jwt.io"));
 
     Response response = keycloak.realm(REALM_NAME).clients().create(clientRep);
     if (response.getStatus() == 201) {
@@ -157,6 +161,50 @@ public class KeycloakService {
     response.close();
     return "";
 
+  }
+
+  public void assignClientRoleToGroup(String groupName, String clientId, String roleName) {
+    System.out.println("ENTRA ASSAING");
+    RealmResource realm = keycloak.realm(REALM_NAME);
+    try {
+      // 1. BUSCAR EL GRUPO (Necesitamos su ID UUID)
+      // .groups(search, first, max)
+      List<GroupRepresentation> groups = realm.groups().groups(groupName, 0, 1);
+      if (groups.isEmpty()) {
+        throw new RuntimeException("El grupo '" + groupName + "' no existe.");
+      }
+      String groupUuid = groups.get(0).getId();
+
+      // 2. BUSCAR EL CLIENTE (Necesitamos su ID UUID, no el clientId string)
+      List<ClientRepresentation> clients = realm.clients().findByClientId(clientId);
+      if (clients.isEmpty()) {
+        throw new RuntimeException("El cliente '" + clientId + "' no existe.");
+      }
+      String clientUuid = clients.get(0).getId();
+
+      System.out.println(clientUuid);
+
+      System.out.println("ASSAING RO");
+      // 3. BUSCAR EL ROL (Necesitamos el objeto Role completo)
+      // Nota: Buscamos el rol DENTRO del cliente específico usando clientUuid
+      RoleRepresentation clientRole = realm.clients().get(clientUuid)
+          .roles().get(roleName).toRepresentation();
+
+      System.out.println("PASEEE CLIENT ROL");
+      // 4. HACER LA VINCULACIÓN FINAL
+      // Entramos al grupo -> roles -> clientLevel(clientUuid) -> add
+      realm.groups().group(groupUuid)
+          .roles()
+          .clientLevel(clientUuid)
+          .add(Collections.singletonList(clientRole));
+
+      System.out.println(
+          "✅ ÉXITO: Rol '" + roleName + "' (del cliente " + clientId + ") asignado al grupo '" + groupName + "'");
+
+    } catch (Exception e) {
+      System.err.println("❌ ERROR asignando rol: " + e.getMessage());
+      // Aquí podrías lanzar una excepción personalizada
+    }
   }
 
   public String findOrCreateRealmRole(String roleName, String description, String clientId) {
@@ -181,11 +229,133 @@ public class KeycloakService {
     RoleRepresentation role = new RoleRepresentation();
     role.setName(roleName);
     role.setDescription(description);
-    keycloak.realm(REALM_NAME).roles().create(role);
+    keycloak.realm(REALM_NAME).clients().get(clientId).roles().create(role);
     System.out.println("Rol de Realm '" + roleName + "' creado.");
     // Lo recupera después de crearlo para devolver la representación completa (con
     // ID)
     return roleName;
+  }
+
+  public RealmRepresentation getRealm() {
+    RealmRepresentation realm = new RealmRepresentation();
+
+    realm.setRealm("quarkus"); // Nombre por defecto
+    realm.setEnabled(true);
+    realm.setUsers(new ArrayList<>());
+    realm.setClients(new ArrayList<>());
+
+    // Configuraciones de tiempo (Token Lifespan)
+    realm.setAccessTokenLifespan(600);
+    realm.setSsoSessionMaxLifespan(600);
+    realm.setRefreshTokenMaxReuse(10);
+    realm.setRequiredActions(List.of()); // Lista vacía
+
+    // Configuración de Roles
+    RolesRepresentation roles = new RolesRepresentation();
+    List<RoleRepresentation> realmRoles = new ArrayList<>();
+
+    // Agregamos los roles por defecto de Quarkus
+    realmRoles.add(new RoleRepresentation("user", null, false));
+    realmRoles.add(new RoleRepresentation("admin", null, false));
+
+    roles.setRealm(realmRoles);
+    realm.setRoles(roles);
+
+    realm.setRegistrationEmailAsUsername(true);
+    realm.setRegistrationAllowed(true);
+
+    realm.setEventsEnabled(true);
+    realm.setEventsExpiration(2592000L);
+    realm.setEventsListeners(List.of("jboss-logging", "ext-event-webhook", "ext-event-http"));
+
+    keycloak.realms().create(realm);
+    return realm;
+  }
+
+  public String getToken() {
+    ObjectMapper objectMapper = new ObjectMapper();
+    try {
+      String token = keycloak.tokenManager().getAccessTokenString();
+
+      Map<String, Object> webhookData = new HashMap<>();
+      webhookData.put("enabled", "true"); // String "true" según tu curl
+      webhookData.put("url", "https://webhook.site/7b00dbf6-a71a-4712-b144-ea3c0355fed9");
+      webhookData.put("secret", "secret");
+      webhookData.put("eventTypes", List.of("REGISTER", "LOGIN", "UPDATE_PROFILE"));
+      String jsonBody = objectMapper
+          .writeValueAsString(webhookData);
+
+      HttpClient client = HttpClient.newHttpClient();
+
+      HttpRequest request = HttpRequest.newBuilder()
+          .uri(URI.create(String.format("http://localhost:8080/realms/%s/webhooks", REALM_NAME)))
+          .header("Authorization", "Bearer " + token) // Aquí inyectas el token
+          .header("Content-Type", "application/json")
+          .POST(BodyPublishers.ofString(jsonBody))
+          .build();
+
+      // 3. EJECUTAR
+      HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+      System.out.println("Iniciando Webhooks: " + response.body());
+
+      HttpRequest request2 = HttpRequest.newBuilder()
+          .uri(URI.create(String.format("http://localhost:8080/realms/%s/webhooks", REALM_NAME)))
+          .header("Authorization", "Bearer " + token) // Aquí inyectas el token
+          .GET()
+          .build();
+
+      HttpResponse<String> response2 = client.send(request2, HttpResponse.BodyHandlers.ofString());
+
+      System.out.println("List Webhooks: " + response2.body());
+      return "GAAA";
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      return "GEEE";
+    }
+  }
+
+  public void configurarWebhook(String targetUrl) {
+    String realmName = REALM_NAME; // El nombre de tu realm
+    String configKey = "_providerConfig.ext-event-http"; // La llave mágica del plugin
+
+    // 1. Preparar la configuración como JSON String
+    Map<String, Object> configMap = new HashMap<>();
+    configMap.put("targetUri", targetUrl);
+    // Puedes agregar más opciones si el plugin lo requiere, ej: "includeEvents":
+    // ["REGISTER"]
+
+    ObjectMapper mapper = new ObjectMapper();
+    String jsonConfigValue;
+
+    try {
+      jsonConfigValue = mapper.writeValueAsString(configMap);
+    } catch (Exception e) {
+      throw new RuntimeException("Error creando JSON de configuración", e);
+    }
+
+    // 2. Obtener el Realm Resource y su Representación
+    var realmResource = keycloak.realm(realmName);
+    RealmRepresentation realmRep = realmResource.toRepresentation();
+
+    // 3. Obtener los atributos actuales (o crear mapa nuevo si es nulo)
+    Map<String, String> attributes = realmRep.getAttributes();
+    if (attributes == null) {
+      attributes = new HashMap<>();
+    }
+
+    // 4. Insertar la configuración
+    // OJO: Keycloak espera que el valor sea un String, por eso convertimos el JSON
+    // a String arriba
+    attributes.put(configKey, jsonConfigValue);
+
+    realmRep.setAttributes(attributes);
+
+    // 5. Actualizar el Realm (Esto guarda la configuración)
+    realmResource.update(realmRep);
+
+    System.out.println("Configuración de Webhook actualizada exitosamente.");
   }
 
 }

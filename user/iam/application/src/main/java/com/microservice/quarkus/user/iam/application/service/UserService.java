@@ -52,4 +52,8 @@ public class UserService {
     return keycloakClient.getAllUsers();
   }
 
+  public String getToken() {
+    return keycloakClient.getToken();
+  }
+
 }
