@@ -10,6 +10,9 @@ services:
     ports:
       - 5432:5432
   keycloak:
+    labels:
+      # Change to `true` to disable waiting for ports
+      io.quarkus.devservices.compose.wait_for.ports.disable: false
     image: quay.io/phasetwo/phasetwo-keycloak:26.4.2
     environment:
       KC_DB: postgres
@@ -20,14 +23,15 @@ services:
       KC_DB_SCHEMA: public
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
-      KC_HOSTNAME: localhost
-      KC_HOSTNAME_PORT: 8080
       KC_HEALTH_ENABLED: true
       KC_HTTP_ENABLED: true
       KC_HOSTNAME_STRICT: false
       KC_HOSTNAME_STRICT_HTTPS: false
     depends_on:
       - postgres
+    extra_hosts:
+      # Este mapeo hace que host.docker.internal resuelva al host
+      - "host.docker.internal:host-gateway"
     ports:
       - 8080:8080
     entrypoint: ["/bin/sh"]

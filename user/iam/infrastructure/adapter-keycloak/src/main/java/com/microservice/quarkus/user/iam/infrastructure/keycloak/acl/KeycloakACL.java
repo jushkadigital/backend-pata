@@ -9,6 +9,7 @@ import com.microservice.quarkus.user.iam.infrastructure.keycloak.KeycloakService
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -47,6 +48,11 @@ public class KeycloakACL implements IdentityProvider {
   }
 
   @Override
+  public Map<String, Object> getClientsCreatedByMe() {
+    return keycloakService.getClientsCreatedByMe();
+  }
+
+  @Override
   public List<Role> getAllRoles() {
     return keycloakService.getRoles().stream().filter(Objects::nonNull).map(keycloakRoleMapper::toDomain)
         .collect(Collectors.toList());
@@ -59,8 +65,8 @@ public class KeycloakACL implements IdentityProvider {
   }
 
   @Override
-  public String getToken() {
-    return keycloakService.getToken();
+  public String getToken(String uri) {
+    return keycloakService.getToken(uri);
   }
 
   @Override
@@ -71,6 +77,16 @@ public class KeycloakACL implements IdentityProvider {
   @Override
   public void configurarWebhook(String url) {
     keycloakService.configurarWebhook(url);
+  }
+
+  @Override
+  public String getClientNameById(String clientId) {
+    return keycloakService.getClientNameById(clientId);
+  }
+
+  @Override
+  public User getUserById(String id) {
+    return keycloakUserMapper.toDomain(keycloakService.getUserById(id));
   }
 
 }

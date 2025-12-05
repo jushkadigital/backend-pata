@@ -1,3 +1,4 @@
+
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
@@ -15,10 +16,21 @@
     <description>passengerdomain</description>
 
     <dependencies>
-    <dependency>
-      <groupId>io.quarkiverse.vault</groupId>
-      <artifactId>quarkus-vault</artifactId>
-    </dependency>
+
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-smallrye-openapi</artifactId>
+        </dependency>
+
+        
+        <!-- Config YAML -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-config-yaml</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
@@ -29,11 +41,30 @@
             <artifactId>slf4j-api</artifactId>
             <scope>provided</scope>
         </dependency>
+      <!-- REST controllers con JSON -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-rest-jackson</artifactId>
+        </dependency>
+      <dependency>
+      <groupId>io.quarkiverse.vault</groupId>
+      <artifactId>quarkus-vault</artifactId>
+    </dependency>
+      
+      
     </dependencies>
 
     <build>
+     <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+            <resource>
+                <directory>config</directory>
+            </resource>
+        </resources>
         <plugins>
-          <plugin>
+      <plugin>
       <groupId>io.smallrye</groupId>
       <artifactId>jandex-maven-plugin</artifactId>
       <version>3.4.0</version>
@@ -48,4 +79,5 @@
     </plugin>
         </plugins>
     </build>
+
 </project>

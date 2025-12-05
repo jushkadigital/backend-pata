@@ -1,0 +1,230 @@
+openapi: '3.0.2'
+info:
+  title: Users REST API
+  version: '1.0'
+  description: API for managing users (CRUD operations) based on DDD Entity
+  contact: 
+    name: API Support
+    url: http://www.example.com/support
+    email: support@example.com  
+  license: 
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+  
+
+paths:
+  /clients:
+    get:
+      operationId: getClients
+      description: Get Clients id
+      responses:
+        '200':
+          description: Successfully ids
+          content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Clients'
+                
+  /users:
+    get:
+      operationId: getAllUsers
+      description: Obtain information about a list of users
+      responses:
+        '200':
+          description:  Successfully returned a list of users
+          content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/User'
+    post:
+      operationId: createUser
+      description: Create a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/User"
+      responses:
+        '201':
+          description: "New user created successfully"
+          content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/User"
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+  /users/{id}:
+    get:
+      operationId: getUserById
+      description: Obtain information about a user from their unique id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successfully returned a user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        '400':
+          description: Invalid ID format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+    put:
+      operationId: updateUserById
+      description: Update a user by their unique id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/User"
+      responses:
+        '200':
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResponseError"
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResponseError"
+    delete:
+      operationId: deleteUserById
+      description: Delete a user by their unique id
+      parameters:
+          - in: path
+            name: id
+            required: true
+            schema:
+                type: string
+                format: uuid
+      responses:
+          '204':
+            description: "User deleted successfully"
+          '404':
+            description: "User not found"
+            content:
+                application/json:
+                  schema:
+                    $ref: '#/components/schemas/ResponseError'
+            
+components:
+  schemas:
+    Clients:
+      type: object
+      description: Clients ids
+      additionalProperties:
+        type: string
+    ResponseMessage: 
+      type: object
+      description: Return messages to the client.
+      properties:
+        message:
+          type: string
+          description: Response message
+    ResponseError: 
+      type: object
+      description: Return messages to the client typically when a error occurs.
+      properties:
+        error:
+          type: string
+          description: Response error
+    User: 
+      type: object
+      description: User domain entity
+      required:
+        - email
+        - type
+      properties:
+        id:
+          type: string
+          description: Unique user identifier (UUID)
+          format: uuid
+          readOnly: true
+        email:
+          type: string
+          format: email
+          description: User email address (Value Object)
+        externalId:
+          type: string
+          description: Keycloak ID
+        type:
+          type: string
+          description: Type of user (passenger or admin)
+          enum: [PASSENGER, ADMIN]
+        syncStatus:
+          type: string
+          description: Synchronization status
+          enum: [PENDING, SYNCED, FAILED]
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp
+          readOnly: true
+            
+  # Basic authentication
+  securitySchemes:
+    BasicAuth:
+      type: http
+      scheme: basic
+    api_key:
+      type: apiKey
+      name: api_key
+      in: header
+    oauth2_auth:
+      type: oauth2
+      flows: 
+        implicit:
+          authorizationUrl: http://example.org/api/oauth/dialog
+          scopes:
+            write:users: modify users in your account
+            read:users: read user information
+security:
+  - BasicAuth: []
+
+

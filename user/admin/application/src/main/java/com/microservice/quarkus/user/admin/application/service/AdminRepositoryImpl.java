@@ -2,10 +2,10 @@ package com.microservice.quarkus.user.admin.application.service;
 
 import java.util.List;
 
-import com.microservice.quarkus.admin.domain.entities.Admin;
-import com.microservice.quarkus.admin.domain.entities.AdminId;
-import com.microservice.quarkus.admin.domain.entities.EmailAddress;
-import com.microservice.quarkus.admin.domain.ports.out.AdminRepository;
+import com.microservice.quarkus.user.admin.domain.entities.Admin;
+import com.microservice.quarkus.user.admin.domain.entities.AdminId;
+import com.microservice.quarkus.user.admin.domain.entities.EmailAddress;
+import com.microservice.quarkus.user.admin.domain.ports.out.AdminRepository;
 import com.microservice.quarkus.user.admin.application.api.AdminApiService;
 
 import jakarta.enterprise.context.ApplicationScoped;

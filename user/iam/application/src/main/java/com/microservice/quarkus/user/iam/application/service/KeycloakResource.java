@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import com.microservice.quarkus.user.iam.application.api.IdentityProvider;
+import com.microservice.quarkus.user.iam.application.dto.CreateUserCommand;
 import com.microservice.quarkus.user.iam.domain.Role;
 import com.microservice.quarkus.user.iam.domain.User;
 import com.microservice.quarkus.user.iam.domain.UserRepository;
@@ -52,14 +53,6 @@ public class KeycloakResource {
   }
 
   @GET
-  @Path("/users/create/{emailparam}")
-  public String createUser(@PathParam("emailparam") String emailparam) {
-    String password = "aoeaoe";
-    String email = emailparam + "@oeuoeu.com";
-    return userService.register(email, password, UserType.PASSENGER);
-  }
-
-  @GET
   @Path("/roles")
   public List<String> getRoles() {
     return roleRepository.getAll().stream().map(Role::getName).collect(Collectors.toList());
@@ -69,13 +62,6 @@ public class KeycloakResource {
   @Path("/roles/{id}")
   public List<String> getRoles(@PathParam("id") String clientId) {
     return roleRepository.getAllById(clientId).stream().map(Role::getName).collect(Collectors.toList());
-  }
-
-  @GET
-  @Path("/gettoken")
-  public String obtenerTokenAdmin() {
-    String token = userService.getToken();
-    return token;
   }
 
 }

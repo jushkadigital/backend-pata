@@ -12,15 +12,34 @@
 
     <artifactId>passengerapplication</artifactId>
     <name>passengerapplication</name>
-    <description>userapplication</description>
+    <description>passengerapplication</description>
 
     <dependencies>
-    
+
+    <dependency>
+      <groupId>com.microservice.quarkus</groupId>
+      <artifactId>passengerdomain</artifactId>
+      <version>0.0.1-SNAPSHOT</version>
+    </dependency>
+
         <dependency>
-            <groupId>com.microservice.quarkus</groupId>
-            <artifactId>userdomain</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-smallrye-openapi</artifactId>
         </dependency>
+      <dependency>
+        <groupId>io.quarkus</groupId>
+        <artifactId>quarkus-hibernate-validator</artifactId>
+    </dependency>
+
+        
+        <!-- Config YAML -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-config-yaml</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
@@ -32,15 +51,16 @@
             <scope>provided</scope>
         </dependency>
       <!-- REST controllers con JSON -->
-    <dependency>
+        <dependency>
             <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-resteasy-jackson</artifactId>
+            <artifactId>quarkus-rest-jackson</artifactId>
         </dependency>
-
       <dependency>
       <groupId>io.quarkiverse.vault</groupId>
       <artifactId>quarkus-vault</artifactId>
     </dependency>
+      
+      
     </dependencies>
 
     <build>
@@ -68,4 +88,5 @@
     </plugin>
         </plugins>
     </build>
+
 </project>

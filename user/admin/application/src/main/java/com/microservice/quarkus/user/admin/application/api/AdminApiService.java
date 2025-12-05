@@ -2,9 +2,9 @@ package com.microservice.quarkus.user.admin.application.api;
 
 import java.util.List;
 
-import com.microservice.quarkus.admin.domain.entities.Admin;
-import com.microservice.quarkus.admin.domain.entities.AdminId;
-import com.microservice.quarkus.admin.domain.entities.EmailAddress;
+import com.microservice.quarkus.user.admin.domain.entities.Admin;
+import com.microservice.quarkus.user.admin.domain.entities.AdminId;
+import com.microservice.quarkus.user.admin.domain.entities.EmailAddress;
 
 public interface AdminApiService {
   public Admin findById(AdminId id);

@@ -5,9 +5,9 @@ import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.control.MappingControl.Use;
 
-import com.microservice.quarkus.admin.domain.entities.Admin;
-import com.microservice.quarkus.admin.domain.entities.AdminId;
-import com.microservice.quarkus.admin.domain.entities.EmailAddress;
+import com.microservice.quarkus.user.admin.domain.entities.Admin;
+import com.microservice.quarkus.user.admin.domain.entities.AdminId;
+import com.microservice.quarkus.user.admin.domain.entities.EmailAddress;
 import com.microservice.quarkus.user.admin.infrastructure.db.hibernate.dbo.AdminEntity;
 
 @Mapper(componentModel = "cdi")

@@ -33,5 +33,7 @@
     <modules>
       <module>adapter-keycloak</module>
       <module>adapter-postgresql</module>
+      <module>adapter-webhook</module>
+      <module>adapter-rest</module>
     </modules>
 </project>

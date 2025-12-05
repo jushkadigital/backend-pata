@@ -4,6 +4,7 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 
+import org.jboss.resteasy.reactive.ClientWebApplicationException;
 import org.keycloak.admin.client.CreatedResponseUtil;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
@@ -56,6 +57,10 @@ public class KeycloakService {
 
   public List<UserRepresentation> getUsers() {
     return keycloak.realm(REALM_NAME).users().list();
+  }
+
+  public UserRepresentation getUserById(String id) {
+    return keycloak.realm(REALM_NAME).users().get(id).toRepresentation();
   }
 
   public List<RoleRepresentation> getRoles() {
@@ -143,11 +148,15 @@ public class KeycloakService {
     ClientRepresentation clientRep = new ClientRepresentation();
     clientRep.setName(name);
     clientRep.setEnabled(true);
-    clientRep.setDirectAccessGrantsEnabled(true);
-    clientRep.setPublicClient(true);
+
+    clientRep.setPublicClient(false);
     clientRep.setSecret("admin");
 
-    clientRep.setRedirectUris(Arrays.asList("http://localhost:8081/*", "https://jwt.io"));
+    clientRep.setServiceAccountsEnabled(true); // Permite Client Credentials Grant
+    clientRep.setStandardFlowEnabled(true); // Authorization Code Flow
+    clientRep.setDirectAccessGrantsEnabled(true);
+
+    clientRep.setRedirectUris(Arrays.asList("http://localhost:8081/*", "https://jwt.io", "http://localhost:4000/*"));
 
     Response response = keycloak.realm(REALM_NAME).clients().create(clientRep);
     if (response.getStatus() == 201) {
@@ -161,6 +170,42 @@ public class KeycloakService {
     response.close();
     return "";
 
+  }
+
+  public record ClientInfo(String id, String secret) {
+  }
+
+  public Map<String, Object> getClientsCreatedByMe() {
+    List<ClientRepresentation> myClients = keycloak.realm(REALM_NAME).clients().findAll(null, true, true, 0, 100);
+    return myClients.stream()
+        .filter(c -> c.getName() != null && c.getName().toLowerCase().contains("client".toLowerCase()))
+        .collect(Collectors.toMap(
+            ClientRepresentation::getName,
+            c -> {
+              return new ClientInfo(c.getId(), c.getSecret());
+            }));
+  }
+
+  public String getClientNameById(String clientId) {
+    try {
+      // 1. Accedemos al realm
+      // 2. Accedemos al recurso 'clients'
+      // 3. Obtenemos el recurso específico por su UUID (.get(id))
+      // 4. Convertimos a representación para leer los datos (.toRepresentation())
+      ClientRepresentation clientRep = keycloak.realm(REALM_NAME)
+          .clients()
+          .get(clientId)
+          .toRepresentation();
+
+      return clientRep.getName();
+
+      // Si prefieres el nombre visual, usa: return clientRep.getName();
+
+    } catch (NotFoundException e) {
+      return "Cliente no encontrado";
+    } catch (Exception e) {
+      throw new RuntimeException("Error al conectar con Keycloak", e);
+    }
   }
 
   public void assignClientRoleToGroup(String groupName, String clientId, String roleName) {
@@ -268,20 +313,29 @@ public class KeycloakService {
     realm.setEventsExpiration(2592000L);
     realm.setEventsListeners(List.of("jboss-logging", "ext-event-webhook", "ext-event-http"));
 
-    keycloak.realms().create(realm);
+    try {
+      keycloak.realms().create(realm);
+
+    } catch (ClientWebApplicationException e) {
+      if (e.getResponse().getStatus() == 409) {
+        System.out.println("El Realm ya existe, omitiendo creación.");
+      } else {
+        throw e;
+      }
+    }
     return realm;
   }
 
-  public String getToken() {
+  public String getToken(String uri) {
     ObjectMapper objectMapper = new ObjectMapper();
     try {
       String token = keycloak.tokenManager().getAccessTokenString();
 
       Map<String, Object> webhookData = new HashMap<>();
       webhookData.put("enabled", "true"); // String "true" según tu curl
-      webhookData.put("url", "https://webhook.site/7b00dbf6-a71a-4712-b144-ea3c0355fed9");
+      webhookData.put("url", uri);
       webhookData.put("secret", "secret");
-      webhookData.put("eventTypes", List.of("REGISTER", "LOGIN", "UPDATE_PROFILE"));
+      webhookData.put("eventTypes", List.of("REGISTER"));
       String jsonBody = objectMapper
           .writeValueAsString(webhookData);
 

@@ -18,11 +18,21 @@ CREATE TABLE quarkus.roles (
     updated_at TIMESTAMP
 );
 
+
 create TABLE quarkus.admins (
     id VARCHAR(255) PRIMARY KEY,
     email VARCHAR(255)  NOT NULL,
-    user_type VARCHAR(50) NOT NULL,
+    admin_type VARCHAR(50) NOT NULL,
+    external_id VARCHAR(255)  NOT NULL,
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP
+);
 
-)
+create TABLE quarkus.passengers (
+    id VARCHAR(255) PRIMARY KEY,
+    email VARCHAR(255)  NOT NULL,
+    passenger_type VARCHAR(50) NOT NULL,
+    external_id VARCHAR(255)  NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP
+);

@@ -22,16 +22,18 @@ public class User {
   private Instant createdAt;
   private Instant updatedAt;
 
-  public static User createNew(UserId id, EmailAddress email, UserType type) {
+  public static User createNew(String email, String type) {
     Instant now = Instant.now();
 
-    return User.builder()
-        .id(id)
-        .email(email)
-        .type(type)
+    User user = User.builder()
+        .id(UserId.random())
+        .email(new EmailAddress(email))
+        .type(UserType.valueOf(type.toUpperCase()))
         .syncStatus(SyncStatus.PENDING)
         .createdAt(now)
         .updatedAt(now)
         .build();
+
+    return user;
   }
 }

@@ -8,6 +8,7 @@ import com.microservice.quarkus.user.iam.domain.User;
 import com.microservice.quarkus.user.iam.domain.UserId;
 
 public interface UserApiService {
+  
   public User findById(UserId id);
 
   public User findByEmail(EmailAddress email);

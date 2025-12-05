@@ -32,6 +32,17 @@
       <artifactId>iam-adapter-postgresql</artifactId>
       <version>0.0.1-SNAPSHOT</version>
     </dependency>
+      <dependency>
+      <groupId>com.microservice.quarkus</groupId>
+      <artifactId>iam-adapter-webhook</artifactId>
+      <version>0.0.1-SNAPSHOT</version>
+    </dependency>
+      <dependency>
+      <groupId>com.microservice.quarkus</groupId>
+      <artifactId>iam-adapter-rest</artifactId>
+      <version>0.0.1-SNAPSHOT</version>
+    </dependency>
+
 
         <dependency>
             <groupId>io.quarkus</groupId>

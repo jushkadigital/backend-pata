@@ -1,7 +1,7 @@
 
 package com.microservice.quarkus.user.admin.infrastructure.db.hibernate.dbo.converter;
 
-import com.microservice.quarkus.admin.domain.entities.AdminId;
+import com.microservice.quarkus.user.admin.domain.entities.AdminId;
 
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;

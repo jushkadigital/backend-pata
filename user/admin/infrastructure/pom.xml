@@ -32,5 +32,6 @@
     </build>
     <modules>
       <module>adapter-postgresql</module>
+      <module>adapter-eventbus</module>
     </modules>
 </project>

@@ -1,10 +1,14 @@
 package com.microservice.quarkus.user.admin.bootstrap;
 
+import io.quarkus.runtime.Startup;
+import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 
+@Startup
 @ApplicationScoped
 public class AdminBootstrap {
-  public void initModule() {
-    System.out.println("GAAA");
+  @PostConstruct
+  void initModule() {
+    System.out.println("INICIANDO ADMIN MODULEEE");
   }
 }

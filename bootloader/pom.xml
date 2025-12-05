@@ -26,6 +26,11 @@
       <artifactId>adminbootstrap</artifactId>
       <version>0.0.1-SNAPSHOT</version>
     </dependency>
+      <dependency>
+      <groupId>com.microservice.quarkus</groupId>
+      <artifactId>passengerbootstrap</artifactId>
+      <version>0.0.1-SNAPSHOT</version>
+    </dependency>
     <!-- YAML config -->
     <dependency>
       <groupId>io.quarkus</groupId>
@@ -87,6 +92,13 @@
                 <version>${compiler-plugin.version}</version>
                 <configuration>
                     <parameters>true</parameters>
+          <annotationProcessorPaths>
+          <path>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>1.18.32</version>
+          </path>
+        </annotationProcessorPaths>
                 </configuration>
             </plugin>
             <plugin>

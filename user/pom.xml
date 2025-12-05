@@ -37,5 +37,6 @@
     <modules>
         <module>iam</module>
         <module>admin</module>
+        <module>passenger</module>
     </modules>
 </project>

@@ -6,8 +6,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.microservice.quarkus.user.admin.infrastructure.db.hibernate.dbo.converter.EmailAddressConverter;
-import com.microservice.quarkus.admin.domain.entities.AdminType;
-import com.microservice.quarkus.admin.domain.entities.EmailAddress;
+import com.microservice.quarkus.user.admin.domain.entities.AdminType;
+import com.microservice.quarkus.user.admin.domain.entities.EmailAddress;
 import com.microservice.quarkus.user.admin.infrastructure.db.hibernate.dbo.converter.AdminIdConverter;
 
 import jakarta.persistence.CollectionTable;
@@ -36,8 +36,11 @@ public class AdminEntity {
   private EmailAddress email;
 
   @Enumerated(EnumType.STRING)
-  @Column(name = "user_type", nullable = false)
+  @Column(name = "admin_type", nullable = false)
   private AdminType type;
+
+  @Column(name = "external_id",nullable= false)
+  private String externalId;
 
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;

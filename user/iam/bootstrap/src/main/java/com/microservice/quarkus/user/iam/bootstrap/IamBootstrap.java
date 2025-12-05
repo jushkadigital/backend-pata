@@ -2,7 +2,7 @@ package com.microservice.quarkus.user.iam.bootstrap;
 
 import java.util.List;
 
-import com.microservice.quarkus.user.iam.application.service.ClientService;
+import com.microservice.quarkus.user.iam.application.api.IdentityProvider;
 import com.microservice.quarkus.user.iam.application.service.RoleService;
 
 import io.quarkus.runtime.Startup;
@@ -18,7 +18,7 @@ public class IamBootstrap {
   RoleService roleService;
 
   @Inject
-  ClientService clientService;
+  IdentityProvider clientService;
 
   @PostConstruct
   void init() {
@@ -28,11 +28,12 @@ public class IamBootstrap {
 
     System.out.println("Realm creado");
 
-    clientService.configurarWebhook("https://webhook.site/7b00dbf6-a71a-4712-b144-ea3c0355fed9");
+    // clientService.configurarWebhook("https://webhook.site/7b00dbf6-a71a-4712-b144-ea3c0355fed9");
+    clientService.configurarWebhook("http://172.17.0.1:8081/webhooks/keycloak");
 
-    clientService.getToken();
+    clientService.getToken("http://172.17.0.1:8081/webhooks/keycloak");
 
-    String idOne = clientService.register("dashboard-client");
+    String idOne = clientService.createClient("dashboard-client");
     System.out.println(idOne);
 
     List<String> roles = List.of("CATALOG_VIEW", "CATALOG_COMMAND", "CATALOG_DELETE", "CATALGO_ERASE");

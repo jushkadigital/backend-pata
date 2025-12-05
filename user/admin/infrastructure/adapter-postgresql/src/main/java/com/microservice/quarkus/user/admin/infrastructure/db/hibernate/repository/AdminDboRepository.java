@@ -7,10 +7,10 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
-import com.microservice.quarkus.admin.domain.entities.Admin;
-import com.microservice.quarkus.admin.domain.entities.AdminId;
-import com.microservice.quarkus.admin.domain.entities.EmailAddress;
-import com.microservice.quarkus.admin.domain.ports.out.AdminRepository;
+import com.microservice.quarkus.user.admin.domain.entities.Admin;
+import com.microservice.quarkus.user.admin.domain.entities.AdminId;
+import com.microservice.quarkus.user.admin.domain.entities.EmailAddress;
+import com.microservice.quarkus.user.admin.domain.ports.out.AdminRepository;
 import com.microservice.quarkus.user.admin.infrastructure.db.hibernate.dbo.AdminEntity;
 import com.microservice.quarkus.user.admin.infrastructure.db.hibernate.exceptions.DboException;
 import com.microservice.quarkus.user.admin.infrastructure.db.hibernate.mapper.AdminMapper;

@@ -27,6 +27,12 @@
       <artifactId>admin-adapter-postgresql</artifactId>
       <version>0.0.1-SNAPSHOT</version>
     </dependency>
+    <dependency>
+      <groupId>com.microservice.quarkus</groupId>
+      <artifactId>admin-adapter-eventbus</artifactId>
+      <version>0.0.1-SNAPSHOT</version>
+    </dependency>
+
 
         <dependency>
             <groupId>io.quarkus</groupId>
