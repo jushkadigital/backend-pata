@@ -1,0 +1,11 @@
+"%test":
+  quarkus:  
+    log:          
+      category:
+        "com.microservice.quarkus":
+          level: DEBUG
+      file:
+        enable: true
+        path: target/quarkus-rest-adapter-tests.log
+        level: ALL  
+

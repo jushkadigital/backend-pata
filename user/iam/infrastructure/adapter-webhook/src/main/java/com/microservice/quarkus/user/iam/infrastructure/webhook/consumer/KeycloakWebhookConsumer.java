@@ -25,7 +25,7 @@ public class KeycloakWebhookConsumer {
   private final Map<String, String> cliNameDict = new HashMap<>() {
     {
       put("dashboard-client", "ADMIN");
-      put("frontend-client", "PASSENGR");
+      put("frontend-client", "PASSENGER");
     }
   };
 

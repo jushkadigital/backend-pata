@@ -1,14 +1,21 @@
-quarkus:  
+quarkus:
   http:
     host: 0.0.0.0
     cors:
      enabled: true
-  banner:    
+  banner:
     # remove quarkus logo at startup logs
     enabled: false
 
   log:
     level: INFO
+
+  # Default OIDC config - CustomOidcResolver provides dynamic tenant config
+  oidc:
+    # Disable default tenant since we use dynamic resolution
+    tenant-enabled: false
+    # Defer discovery to allow Keycloak to start first
+    discovery-enabled: false
 
 "%prod":
   vault:

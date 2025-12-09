@@ -23,13 +23,6 @@ public class RoleService {
 
   @Transactional
   public String register(String name, String description, String clientId) {
-    System.out.println(name);
-    Role existing = userRepository.findByName(name);
-    System.out.println(existing);
-    System.out.println("FINDBYNAME");
-    if (existing != null) {
-      throw new IllegalArgumentException("El Rol ya existe con email: " + name);
-    }
     Role rol = Role.createNew(UUID.randomUUID().toString(), name, description, clientId);
     userRepository.save(rol);
 

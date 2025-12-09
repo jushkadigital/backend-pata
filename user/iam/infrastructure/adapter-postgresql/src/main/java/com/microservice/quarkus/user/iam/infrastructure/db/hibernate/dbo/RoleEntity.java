@@ -30,7 +30,7 @@ public class RoleEntity {
   @Id
   private String id;
 
-  @Column(name = "name", unique = true, nullable = false)
+  @Column(name = "name", nullable = false)
   private String name;
 
   @Column(name = "description")

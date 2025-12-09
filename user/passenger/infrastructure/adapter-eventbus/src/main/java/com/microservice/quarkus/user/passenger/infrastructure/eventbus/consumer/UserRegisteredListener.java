@@ -12,7 +12,7 @@ import jakarta.inject.Inject;
 public class UserRegisteredListener {
 
   @Inject
-  PassengerService adminService;
+  PassengerService passengerService;
 
   // Escucha el evento que viene del Scheduler/Outbox o del Bus directo
   @ConsumeEvent("iam.user.registered")
@@ -21,12 +21,24 @@ public class UserRegisteredListener {
 
     JsonObject jsonEvent = new JsonObject(event);
 
+    System.out.println("EVENT BUS PASSENGR");
     System.out.println(jsonEvent);
 
-    CreatePassengerCommand cmd = (jsonEvent.mapTo(CreatePassengerCommand.class));
+    System.out.println(jsonEvent.getString("type"));
+    System.out.println("El de arriba es creado");
+    if (jsonEvent.getString("type").equals("PASSENGER")) {
 
-    System.out.println(cmd);
-    System.out.println("⚡ passenger Module: Recibido evento de usuario " + event);
+      CreatePassengerCommand cmd = (jsonEvent.mapTo(CreatePassengerCommand.class));
+      System.out.println(cmd);
+      System.out.println("⚡ passenger Module: Recibido evento de usuario " + event);
+
+      passengerService.register(cmd);
+
+      System.out.println("Passenger Creado");
+
+    } else {
+      System.out.println("NO DEBI ENTRAR");
+    }
 
     // Transformamos el Evento (Infraestructura) a un Comando (Aplicación)
 

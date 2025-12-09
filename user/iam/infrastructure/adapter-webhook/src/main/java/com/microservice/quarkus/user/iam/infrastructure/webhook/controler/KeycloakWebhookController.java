@@ -25,7 +25,11 @@ public class KeycloakWebhookController {
   @POST
   public Response receiveEvent(KeycloakDTO dto) {
 
-    System.out.println("ENTRO TRIGEER");
+    System.out.println("Webhook received: " + (dto != null ? dto.getType() : "null"));
+
+    if (dto == null || dto.getType() == null) {
+      return Response.accepted().build();
+    }
 
     List<String> eventsAllowed = List.of("REGISTER");
 

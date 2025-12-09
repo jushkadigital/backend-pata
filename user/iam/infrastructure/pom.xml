@@ -35,5 +35,6 @@
       <module>adapter-postgresql</module>
       <module>adapter-webhook</module>
       <module>adapter-rest</module>
+      <module>adapter-eventbus</module>
     </modules>
 </project>

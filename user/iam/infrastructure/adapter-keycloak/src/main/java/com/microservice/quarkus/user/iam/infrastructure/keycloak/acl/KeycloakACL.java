@@ -1,6 +1,7 @@
 package com.microservice.quarkus.user.iam.infrastructure.keycloak.acl;
 
 import com.microservice.quarkus.user.iam.application.api.IdentityProvider;
+import com.microservice.quarkus.user.iam.application.dto.TenantConfigDTO;
 import com.microservice.quarkus.user.iam.domain.Role;
 import com.microservice.quarkus.user.iam.domain.User;
 import com.microservice.quarkus.user.iam.domain.UserType;
@@ -48,8 +49,13 @@ public class KeycloakACL implements IdentityProvider {
   }
 
   @Override
-  public Map<String, Object> getClientsCreatedByMe() {
+  public Map<String, ?> getClientsCreatedByMe() {
     return keycloakService.getClientsCreatedByMe();
+  }
+
+  @Override
+  public TenantConfigDTO getTenantConfig(String clientName) {
+    return keycloakService.getTenantConfig(clientName);
   }
 
   @Override

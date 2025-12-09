@@ -24,10 +24,6 @@ public class AdminService {
 
   @Transactional
   public String register(CreateAdminCommand cmd) {
-    Admin existing = userRepository.findByEmail(new EmailAddress(cmd.email()));
-    if (existing != null) {
-      throw new IllegalArgumentException("El Admin user ya existe con email: " + cmd.email());
-    }
 
     Admin user = Admin.createNew(cmd.externalId(), cmd.email(), cmd.type());
     userRepository.save(user);

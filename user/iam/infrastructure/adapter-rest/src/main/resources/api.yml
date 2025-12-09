@@ -1,7 +1,7 @@
 openapi: '3.0.2'
 info:
-  title: Users REST API
-  version: '1.0'
+  title: IAM REST API
+  version: '1.2'
   description: API for managing users (CRUD operations) based on DDD Entity
   contact: 
     name: API Support
@@ -10,11 +10,18 @@ info:
   license: 
     name: Apache 2.0
     url: https://www.apache.org/licenses/LICENSE-2.0.html
-  
+servers:
+  - url: /
+
+tags:
+  - name: Clients
+    description: Client management operations
 
 paths:
-  /clients:
+  /api/iam/clients:
     get:
+      tags:
+        - Clients
       operationId: getClients
       description: Get Clients id
       responses:
@@ -26,127 +33,7 @@ paths:
                   type: array
                   items:
                     $ref: '#/components/schemas/Clients'
-                
-  /users:
-    get:
-      operationId: getAllUsers
-      description: Obtain information about a list of users
-      responses:
-        '200':
-          description:  Successfully returned a list of users
-          content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/User'
-    post:
-      operationId: createUser
-      description: Create a new user
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/User"
-      responses:
-        '201':
-          description: "New user created successfully"
-          content:
-              application/json:
-                schema:
-                  $ref: "#/components/schemas/User"
-        '400':
-          description: Invalid input
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ResponseError'
-  /users/{id}:
-    get:
-      operationId: getUserById
-      description: Obtain information about a user from their unique id
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Successfully returned a user
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-        '404':
-          description: User not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ResponseError'
-        '400':
-          description: Invalid ID format
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ResponseError'
-    put:
-      operationId: updateUserById
-      description: Update a user by their unique id
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/User"
-      responses:
-        '200':
-          description: User updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/User"
-        '400':
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ResponseError"
-        '404':
-          description: User not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ResponseError"
-    delete:
-      operationId: deleteUserById
-      description: Delete a user by their unique id
-      parameters:
-          - in: path
-            name: id
-            required: true
-            schema:
-                type: string
-                format: uuid
-      responses:
-          '204':
-            description: "User deleted successfully"
-          '404':
-            description: "User not found"
-            content:
-                application/json:
-                  schema:
-                    $ref: '#/components/schemas/ResponseError'
-            
+
 components:
   schemas:
     Clients:

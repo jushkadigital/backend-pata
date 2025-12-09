@@ -6,21 +6,30 @@
 
     <parent>
         <groupId>com.microservice.quarkus</groupId>
-        <artifactId>iaminfrastructure</artifactId>
+        <artifactId>passengerinfrastructure</artifactId>
         <version>0.0.1-SNAPSHOT</version>
     </parent>
 
-    <artifactId>iam-adapter-rest</artifactId>
+    <artifactId>passenger-adapter-rest</artifactId>
     <name>REST Adapter</name>
     <description>REST Adapters implementation</description>
 
     <dependencies>
         <dependency>
             <groupId>com.microservice.quarkus</groupId>
-            <artifactId>iamapplication</artifactId>
+            <artifactId>passengerapplication</artifactId>
             <version>0.0.1-SNAPSHOT</version>
         </dependency>
 
+      <dependency>
+            <groupId>com.microservice.quarkus</groupId>
+            <artifactId>iamapplication</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
+        </dependency>
+      <dependency>
+    <groupId>io.quarkus</groupId>
+    <artifactId>quarkus-oidc</artifactId>
+</dependency>
       <dependency>
         <groupId>io.quarkus</groupId>
         <artifactId>quarkus-hibernate-validator</artifactId>
@@ -102,7 +111,7 @@
     <version>${openapi-generator.version}</version>
     <executions>
         <execution>
-            <id>iam-generate-rest-api</id>
+            <id>passenger-generate-rest-api</id>
             <goals>
                 <goal>generate</goal>
             </goals>
@@ -111,9 +120,9 @@
               <generatorName>jaxrs-spec</generatorName>
                 <output>${project.build.directory}/generated-sources/openapi</output>
                 <!-- packages -->
-                <modelPackage>com.microservice.quarkus.user.iam.infrastructure.rest.dto</modelPackage>
-                <apiPackage>com.microservice.quarkus.user.iam.infrastructure.rest.api</apiPackage>
-                <packageName>com.microservice.quarkus.user.iam.infrastructure.rest</packageName>
+                <modelPackage>com.microservice.quarkus.user.passenger.infrastructure.rest.dto</modelPackage>
+                <apiPackage>com.microservice.quarkus.user.passenger.infrastructure.rest.api</apiPackage>
+                <packageName>com.microservice.quarkus.user.passenger.infrastructure.rest</packageName>
               <interfaceOnly>true</interfaceOnly>
               <useJakartaEe>true</useJakartaEe>
                 <!-- Ajustes importantes -->

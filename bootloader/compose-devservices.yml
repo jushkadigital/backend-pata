@@ -12,7 +12,8 @@ services:
   keycloak:
     labels:
       # Change to `true` to disable waiting for ports
-      io.quarkus.devservices.compose.wait_for.ports.disable: false
+      io.quarkus.devservices.compose.wait_for.ports.disable: true
+      io.quarkus.devservices.compose.wait_for.ports.timeout: "40s"
     image: quay.io/phasetwo/phasetwo-keycloak:26.4.2
     environment:
       KC_DB: postgres

@@ -45,6 +45,7 @@ import java.util.stream.Collectors;
 import javax.management.relation.Role;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.microservice.quarkus.user.iam.application.dto.TenantConfigDTO;
 import com.microservice.quarkus.user.iam.domain.UserType;
 
 @ApplicationScoped
@@ -175,15 +176,36 @@ public class KeycloakService {
   public record ClientInfo(String id, String secret) {
   }
 
-  public Map<String, Object> getClientsCreatedByMe() {
+  public Map<String, ClientInfo> getClientsCreatedByMe() {
     List<ClientRepresentation> myClients = keycloak.realm(REALM_NAME).clients().findAll(null, true, true, 0, 100);
     return myClients.stream()
         .filter(c -> c.getName() != null && c.getName().toLowerCase().contains("client".toLowerCase()))
         .collect(Collectors.toMap(
             ClientRepresentation::getName,
             c -> {
-              return new ClientInfo(c.getId(), c.getSecret());
+              // findAll() doesn't return secret, need to fetch it separately
+              String secret = keycloak.realm(REALM_NAME)
+                  .clients()
+                  .get(c.getId())
+                  .getSecret()
+                  .getValue();
+              return new ClientInfo(c.getId(), secret);
             }));
+  }
+
+  public TenantConfigDTO getTenantConfig(String clientName) {
+    Map<String, ClientInfo> clients = getClientsCreatedByMe();
+    ClientInfo clientInfo = clients.get(clientName);
+
+    if (clientInfo == null) {
+      return null;
+    }
+
+    return new TenantConfigDTO(
+        clientInfo.id(),
+        clientInfo.secret(),
+        "http://localhost:8080/realms/" + REALM_NAME
+    );
   }
 
   public String getClientNameById(String clientId) {

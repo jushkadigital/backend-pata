@@ -14,6 +14,7 @@ import com.microservice.quarkus.user.iam.infrastructure.rest.api.ClientsAPI;
 import com.microservice.quarkus.user.iam.infrastructure.rest.dto.UserDTO;
 import com.microservice.quarkus.user.iam.domain.User;
 import com.microservice.quarkus.user.iam.infrastructure.rest.dto.ResponseMessageDTO;
+import jakarta.ws.rs.Path;
 
 @ApplicationScoped
 public class ClientResource implements ClientsAPI {

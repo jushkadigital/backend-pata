@@ -32,14 +32,14 @@ public class Passenger extends RootAggregate implements Entity<Passenger> {
   private String dni;
   private String phone;
 
-  public static Passenger createNew(String externalId, String email, String type) {
+  public static Passenger createNew(String externalId, String email) {
     Instant now = Instant.now();
     return Passenger.builder()
         .id(PassengerId.random())
         .status(PassengerStatus.INCOMPLETE_PROFILE)
         .externalId(externalId)
         .email(new EmailAddress(email))
-        .type(PassengerType.valueOf(type.toUpperCase()))
+        .type(PassengerType.COMMON)
         .createdAt(now)
         .updatedAt(now)
         .build();

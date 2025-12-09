@@ -10,7 +10,7 @@ CREATE TABLE quarkus.users (
 
 CREATE TABLE quarkus.roles (
     id VARCHAR(255) PRIMARY KEY,
-    name VARCHAR(255) UNIQUE NOT NULL,
+    name VARCHAR(255) NOT NULL,
     description VARCHAR(255),
     client_id VARCHAR(255)  NOT NULL,
     sync_status VARCHAR(50) NOT NULL,
@@ -33,6 +33,11 @@ create TABLE quarkus.passengers (
     email VARCHAR(255)  NOT NULL,
     passenger_type VARCHAR(50) NOT NULL,
     external_id VARCHAR(255)  NOT NULL,
+    status VARCHAR(50) NOT NULL,
+    first_names VARCHAR(255)  NULL,
+    last_names VARCHAR(255)  NULL,
+    dni VARCHAR(255)  NULL,
+    phone VARCHAR(255)  NULL,
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP
 );

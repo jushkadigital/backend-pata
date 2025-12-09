@@ -33,5 +33,6 @@
     <modules>
       <module>adapter-postgresql</module>
       <module>adapter-eventbus</module>
+      <module>adapter-rest</module>
     </modules>
 </project>

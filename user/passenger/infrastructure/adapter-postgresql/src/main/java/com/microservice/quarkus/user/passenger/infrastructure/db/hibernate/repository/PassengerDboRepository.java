@@ -35,7 +35,7 @@ public class PassengerDboRepository implements PassengerRepository {
 
   @Override
   public Passenger findByExternalId(String externalId) {
-    return userMapper.toDomain(repository.find("external_id = ?1", externalId).firstResult());
+    return userMapper.toDomain(repository.find("externalId = ?1", externalId).firstResult());
   }
 
   @Override

@@ -26,19 +26,22 @@ public class PassengerService {
   @Transactional
   public String register(CreatePassengerCommand cmd) {
 
-    Passenger user = Passenger.createNew(cmd.externalId(), cmd.email(), cmd.type());
+    Passenger user = Passenger.createNew(cmd.externalId(), cmd.email());
     userRepository.save(user);
 
     return user.getId().value();
   }
 
   @Transactional
-  public Passenger complete(String id, CompletePassengerCommand cmd) {
-    Passenger user = userRepository.findByExternalId(id);
+  public String complete(String id, CompletePassengerCommand cmd) {
+    Passenger passenger = userRepository.findByExternalId(id);
+    if (passenger == null) {
+      throw new IllegalArgumentException("Passenger not found with externalId: " + id);
+    }
+    passenger.completeProfile(cmd.firstNames(), cmd.lastNames(), cmd.dni(), cmd.phone());
+    userRepository.update(passenger);
 
-    user.completeProfile(cmd.firstNames(), cmd.lastNames(), cmd.dni(), cmd.phone());
-
-    return user;
+    return passenger.getId().value();
   }
 
 }

@@ -3,6 +3,7 @@ package com.microservice.quarkus.user.iam.application.api;
 import java.util.List;
 import java.util.Map;
 
+import com.microservice.quarkus.user.iam.application.dto.TenantConfigDTO;
 import com.microservice.quarkus.user.iam.domain.Role;
 import com.microservice.quarkus.user.iam.domain.User;
 import com.microservice.quarkus.user.iam.domain.UserType;
@@ -18,7 +19,9 @@ public interface IdentityProvider {
 
   public String createClient(String name);
 
-  public Map<String, Object> getClientsCreatedByMe();
+  public Map<String, ?> getClientsCreatedByMe();
+
+  public TenantConfigDTO getTenantConfig(String clientName);
 
   public void assingClientRoleToGroup(String groupName, String clientId, String roleName);
 

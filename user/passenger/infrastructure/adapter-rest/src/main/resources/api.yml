@@ -1,0 +1,162 @@
+openapi: '3.0.2'
+info:
+  title: PASSENGR REST API
+  version: '1.0'
+  description: API for managing users (CRUD operations) based on DDD Entity
+  contact: 
+    name: API Support
+    url: http://www.example.com/support
+    email: support@example.com  
+  license: 
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+servers:
+  - url: /
+
+tags:
+  - name: Me
+    description: Passenger profile operations
+
+paths:
+  /api/passengers/me:
+    get:
+      tags:
+        - Me
+      operationId: getPassengerInfo
+      description: Obtain information about a user from their unique id
+      responses:
+        '200':
+          description: Successfully returned a user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        '400':
+          description: Invalid ID format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+
+  /api/passengers/complete:
+    post:
+      tags:
+        - Me
+      operationId: completePassengerProfile
+      description: Complete passenger profile with personal information
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteRequest'
+      responses:
+        '200':
+          description: Profile completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseMessage'
+        '404':
+          description: Passenger not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+           
+components:
+  schemas:
+    Me:
+      type: object
+      description: Me
+      required:
+        - id
+        - email
+      properties:
+        id:
+          type: string
+          description: Unique user identifier (UUID)
+          format: uuid
+          readOnly: true
+        email:
+          type: string
+          format: email
+          description: User email address (Value Object)
+        externalId:
+          type: string
+          description: Keycloak ID
+        onboardingCompleted:
+          type: boolean
+          description: Esa completo el registro
+    CompleteRequest:
+      type: object
+      description: Request to complete passenger profile
+      required:
+        - firstNames
+        - lastNames
+        - dni
+        - phone
+      properties:
+        firstNames:
+          type: string
+          description: Passenger first names
+          minLength: 1
+        lastNames:
+          type: string
+          description: Passenger last names
+          minLength: 1
+        dni:
+          type: string
+          description: Passenger identification document number
+          minLength: 1
+        phone:
+          type: string
+          description: Passenger phone number
+          minLength: 1
+    ResponseMessage: 
+      type: object
+      description: Return messages to the client.
+      properties:
+        message:
+          type: string
+          description: Response message
+    ResponseError: 
+      type: object
+      description: Return messages to the client typically when a error occurs.
+      properties:
+        error:
+          type: string
+          description: Response error
+  # Basic authentication
+  securitySchemes:
+    BasicAuth:
+      type: http
+      scheme: basic
+    api_key:
+      type: apiKey
+      name: api_key
+      in: header
+    oauth2_auth:
+      type: oauth2
+      flows: 
+        implicit:
+          authorizationUrl: http://example.org/api/oauth/dialog
+          scopes:
+            write:users: modify users in your account
+            read:users: read user information
+security:
+  - BasicAuth: []
+
+
