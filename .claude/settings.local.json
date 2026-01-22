@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mvn install:*)",
+      "Bash(mvn clean install:*)",
+      "Bash(mvn generate-sources:*)",
+      "Bash(mvn compile:*)",
+      "Bash(xargs cat:*)",
+      "Bash(find:*)",
+      "Bash(wc:*)",
+      "Bash(tree:*)",
+      "Bash(mvn clean compile:*)",
+      "Bash(cat:*)",
+      "Bash(rm:*)"
+    ]
+  }
+}

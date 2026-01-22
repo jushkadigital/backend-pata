@@ -15,7 +15,8 @@ import com.microservice.quarkus.user.iam.application.dto.CreateUserCommand;
 import com.microservice.quarkus.user.iam.application.service.UserService;
 import com.microservice.quarkus.user.iam.domain.User;
 import com.microservice.quarkus.user.iam.domain.UserType;
-import com.microservice.quarkus.user.iam.infrastructure.webhook.event.WebhookPayload;
+import com.microservice.quarkus.user.iam.infrastructure.webhook.event.WebhookKeycloakPayload;
+import com.microservice.quarkus.user.iam.infrastructure.webhook.event.WebhookPayloadPayload;
 
 @ApplicationScoped
 public class KeycloakWebhookConsumer {
@@ -42,7 +43,7 @@ public class KeycloakWebhookConsumer {
    */
   @ConsumeEvent("iam.webhook.keycloak")
   @Blocking
-  public void processKeycloakEvent(WebhookPayload payload) {
+  public void processKeycloakEvent(WebhookKeycloakPayload payload) {
 
     LOG.infof("Procesando evento asíncrono: %s para usuario %s", payload.eventType(), payload.userId());
 
@@ -51,18 +52,37 @@ public class KeycloakWebhookConsumer {
       // Lógica de filtrado
       if ("REGISTER".equals(payload.eventType())) {
 
-        CreateUserCommand command = new CreateUserCommand(
+        CreateUserCommand command = CreateUserCommand.fromWebhook(
             tempUser.getEmail().value(),
             tempUser.getExternalId(),
-            cliNameDict.get(clientService.getClientNameById(payload.clientId()))
-
-        );
+            cliNameDict.get(clientService.getClientNameById(payload.clientId())));
 
         // Invocar Dominio
         userService.register(command);
 
         LOG.info("Sincronización exitosa.");
       }
+    } catch (Exception e) {
+      // Si lanzas excepción aquí, @Retry se activa.
+      LOG.error("Fallo al procesar webhook. Reintentando...", e);
+      throw e;
+    }
+  }
+
+  @ConsumeEvent("iam.webhook.payload")
+  @Blocking
+  public void processPayloadEvent(WebhookPayloadPayload payload) {
+
+    LOG.infof("Procesando evento asíncrono:  para usuario %s", payload.email());
+
+    try {
+      // Lógica de filtrado
+      CreateUserCommand command = CreateUserCommand.fromWebhook2(payload.email(), payload.password(),
+          cliNameDict.get(clientService.getClientNameById(payload.clientId())), payload.type());
+
+      userService.register(command);
+
+      LOG.info("Sincronización exitosa.");
     } catch (Exception e) {
       // Si lanzas excepción aquí, @Retry se activa.
       LOG.error("Fallo al procesar webhook. Reintentando...", e);

@@ -16,6 +16,9 @@ services:
       DB_PORT: 5432
       DB_NAME: quarkus
       QUARKUS_PROFILE: prod
+    networks:
+      - red-compartida  # <--- Asignamos el servicio a la red
+
 
   # Define el servicio para la base de datos PostgreSQL
   db:
@@ -39,7 +42,7 @@ services:
 volumes:
   postgres_data:
 
-  networks:
-  quarkus-dev:
-    name: quarkus-dev
-    driver: bridge
+networks:
+  red-compartida:       # <--- Definimos la red
+    external: true      # <--- ¡Importante! Le dice a Docker que la red ya existe
+  

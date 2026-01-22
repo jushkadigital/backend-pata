@@ -18,6 +18,11 @@ quarkus:
     discovery-enabled: false
 
 "%prod":
+  quarkus:
+    http:
+      cors:
+        origins: /.*/
+
   vault:
     url: http://localhost:8200
 

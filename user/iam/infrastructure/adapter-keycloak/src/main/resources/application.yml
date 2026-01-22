@@ -1,21 +1,38 @@
-'%prod':
-    keycloak:
-        url: http://localhost:8180
-    quarkus:
-        oidc:
-            auth-server-url: ${keycloak.url}/realms/quarkus
+# ==========================================
+# TU CONFIGURACIÓN ACTUAL (Dev / Base)
+# (La dejamos exactamente como la tenías en la imagen)
+# ==========================================
 quarkus:
-    compose:
-        devservices:
-            follow-container-logs: true 
-            files: compose-devservices.yml
+  compose:
+    devservices:
+      follow-container-logs: true
+      files: compose-devservices.yml
+
+  keycloak:
+    devservices:
+      enabled: false
+      follow-container-logs: true
+    admin-client:
+      server-url: http://localhost:8080  # Esto funciona en tu máquina
+
+  log:
+    category:
+      level: ERROR
+
+# ==========================================
+# CORRECCIÓN SOLO PARA PRODUCCIÓN
+# ==========================================
+"%prod":
+  quarkus:
+    oidc:
+      # Sobrescribimos la URL para que no busque en localhost, sino en la variable
+      auth-server-url: ${KEYCLOAK_INTERNAL_URL}/realms/quarkus
+      
+      # Si no usas client-id/secret para validar tokens, no los pongas aquí.
+      # Solo auth-server-url basta para validar firmas JWT.
 
     keycloak:
-        devservices:
-            enabled: false
-            follow-container-logs: true 
-        admin-client: 
-            server-url: http://localhost:8080
-    log:
-        category:
-            level: ERROR
+      admin-client:
+        # IMPORTANTE: Sobrescribimos esto. Si no lo hacemos, 
+        # intentará usar http://localhost:8080 del bloque de arriba y fallará.
+        server-url: ${KEYCLOAK_INTERNAL_URL}

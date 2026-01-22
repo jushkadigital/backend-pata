@@ -1,0 +1,926 @@
+openapi: '3.0.2'
+info:
+  title: Tours REST API
+  version: '1.0'
+  description: API for managing tours in the catalog
+  contact:
+    name: API Support
+    url: http://www.example.com/support
+    email: support@example.com
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+servers:
+  - url: /
+
+tags:
+  - name: Tours
+    description: Tour catalog operations
+
+paths:
+  /api/catalog/tours:
+    get:
+      tags:
+        - Tours
+      operationId: getAllTours
+      description: Get all tours with optional status filter
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [DRAFT, PUBLISHED, SUSPENDED, DISCONTINUED]
+          description: Filter tours by status
+      responses:
+        '200':
+          description: Successfully returned list of tours
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Tour'
+    post:
+      tags:
+        - Tours
+      operationId: createTour
+      description: Create a new tour
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTourRequest'
+      responses:
+        '201':
+          description: Tour created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tour'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+
+  /api/catalog/tours/published:
+    get:
+      tags:
+        - Tours
+      operationId: getPublishedTours
+      description: Get all published tours
+      responses:
+        '200':
+          description: Successfully returned list of published tours
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Tour'
+
+  /api/catalog/tours/sellable:
+    get:
+      tags:
+        - Tours
+      operationId: getSellableTours
+      description: Get all sellable tours (only PUBLISHED tours can be sold)
+      responses:
+        '200':
+          description: Successfully returned list of sellable tours
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Tour'
+
+  /api/catalog/tours/{tourId}:
+    get:
+      tags:
+        - Tours
+      operationId: getTourById
+      description: Get a tour by its ID
+      parameters:
+        - name: tourId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Tour unique identifier
+      responses:
+        '200':
+          description: Successfully returned tour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tour'
+        '404':
+          description: Tour not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+    put:
+      tags:
+        - Tours
+      operationId: updateTour
+      description: Update a tour (only DRAFT tours can be updated)
+      parameters:
+        - name: tourId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Tour unique identifier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTourRequest'
+      responses:
+        '200':
+          description: Tour updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tour'
+        '400':
+          description: Invalid request or tour not in DRAFT status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        '404':
+          description: Tour not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+    delete:
+      tags:
+        - Tours
+      operationId: deleteTour
+      description: Delete a tour
+      parameters:
+        - name: tourId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Tour unique identifier
+      responses:
+        '204':
+          description: Tour deleted successfully
+        '404':
+          description: Tour not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+
+  /api/catalog/tours/code/{code}:
+    get:
+      tags:
+        - Tours
+      operationId: getTourByCode
+      description: Get a tour by its code
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Tour code
+      responses:
+        '200':
+          description: Successfully returned tour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tour'
+        '404':
+          description: Tour not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+
+  /api/catalog/tours/{tourId}/services:
+    post:
+      tags:
+        - Tours
+      operationId: addServiceToTour
+      description: Add a service to a tour
+      parameters:
+        - name: tourId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Tour unique identifier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddServiceRequest'
+      responses:
+        '200':
+          description: Service added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tour'
+        '400':
+          description: Invalid request or tour not in DRAFT status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        '404':
+          description: Tour not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+
+  /api/catalog/tours/{tourId}/services/{serviceName}:
+    put:
+      tags:
+        - Tours
+      operationId: updateServiceInTour
+      description: Update a service in a tour (only DRAFT tours)
+      parameters:
+        - name: tourId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Tour unique identifier
+        - name: serviceName
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Service name to update
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateServiceRequest'
+      responses:
+        '200':
+          description: Service updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tour'
+        '400':
+          description: Invalid request or tour not in DRAFT status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        '404':
+          description: Tour or service not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+    delete:
+      tags:
+        - Tours
+      operationId: removeServiceFromTour
+      description: Remove a service from a tour (only DRAFT tours)
+      parameters:
+        - name: tourId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Tour unique identifier
+        - name: serviceName
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Service name to remove
+      responses:
+        '200':
+          description: Service removed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tour'
+        '400':
+          description: Tour not in DRAFT status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        '404':
+          description: Tour or service not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+
+  /api/catalog/tours/{tourId}/policies:
+    post:
+      tags:
+        - Tours
+      operationId: addPolicyToTour
+      description: Add a policy to a tour
+      parameters:
+        - name: tourId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Tour unique identifier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddPolicyRequest'
+      responses:
+        '200':
+          description: Policy added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tour'
+        '400':
+          description: Invalid request or tour not in DRAFT status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        '404':
+          description: Tour not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+
+  /api/catalog/tours/{tourId}/combinations:
+    post:
+      tags:
+        - Tours
+      operationId: addServiceCombinationToTour
+      description: Add a service combination (alternative package) to a tour
+      parameters:
+        - name: tourId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Tour unique identifier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddServiceCombinationRequest'
+      responses:
+        '200':
+          description: Service combination added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tour'
+        '400':
+          description: Invalid request, tour not in DRAFT status, or referenced services not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        '404':
+          description: Tour not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+
+  /api/catalog/tours/{tourId}/publish:
+    post:
+      tags:
+        - Tours
+      operationId: publishTour
+      description: Publish a tour (requires valid base price and at least one service)
+      parameters:
+        - name: tourId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Tour unique identifier
+      responses:
+        '200':
+          description: Tour published successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tour'
+        '400':
+          description: Tour cannot be published (not in DRAFT status or missing requirements)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        '404':
+          description: Tour not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+
+  /api/catalog/tours/{tourId}/suspend:
+    post:
+      tags:
+        - Tours
+      operationId: suspendTour
+      description: Suspend a published tour
+      parameters:
+        - name: tourId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Tour unique identifier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SuspendTourRequest'
+      responses:
+        '200':
+          description: Tour suspended successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tour'
+        '400':
+          description: Tour cannot be suspended (not in PUBLISHED status)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        '404':
+          description: Tour not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+
+  /api/catalog/tours/{tourId}/resume:
+    post:
+      tags:
+        - Tours
+      operationId: resumeTour
+      description: Resume a suspended tour
+      parameters:
+        - name: tourId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Tour unique identifier
+      responses:
+        '200':
+          description: Tour resumed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tour'
+        '400':
+          description: Tour cannot be resumed (not in SUSPENDED status)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        '404':
+          description: Tour not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+
+  /api/catalog/tours/{tourId}/discontinue:
+    post:
+      tags:
+        - Tours
+      operationId: discontinueTour
+      description: Discontinue a tour
+      parameters:
+        - name: tourId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Tour unique identifier
+      responses:
+        '200':
+          description: Tour discontinued successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tour'
+        '400':
+          description: Tour is already discontinued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        '404':
+          description: Tour not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+
+  /api/catalog/tours/{tourId}/new-version:
+    post:
+      tags:
+        - Tours
+      operationId: createNewVersion
+      description: Create a new version of an existing tour. The original tour remains unchanged (stays PUBLISHED if it was). The new version starts as DRAFT with all data copied.
+      parameters:
+        - name: tourId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Tour unique identifier (the tour to create a new version from)
+      responses:
+        '201':
+          description: New version created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tour'
+        '404':
+          description: Tour not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+
+  /api/catalog/tours/code/{code}/versions:
+    get:
+      tags:
+        - Tours
+      operationId: getTourVersionsByCode
+      description: Get all versions of a tour by its code, ordered by version descending (newest first)
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Tour code
+      responses:
+        '200':
+          description: Successfully returned list of tour versions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Tour'
+
+components:
+  schemas:
+    Tour:
+      type: object
+      description: Tour aggregate
+      required:
+        - id
+        - code
+        - name
+        - durationHours
+        - status
+      properties:
+        id:
+          type: string
+          description: Unique tour identifier (UUID)
+          readOnly: true
+        code:
+          type: string
+          description: Tour code (unique identifier)
+        name:
+          type: string
+          description: Tour name
+        description:
+          type: string
+          description: Tour description
+        durationHours:
+          type: integer
+          minimum: 1
+          maximum: 24
+          description: Duration in hours (1-24)
+        status:
+          type: string
+          enum: [DRAFT, PUBLISHED, SUSPENDED, DISCONTINUED]
+          description: Tour status
+        version:
+          type: integer
+          minimum: 1
+          description: Tour version number (starts at 1)
+          readOnly: true
+        parentTourId:
+          type: string
+          description: ID of the previous version (null for first version)
+          readOnly: true
+        includedServices:
+          type: array
+          items:
+            $ref: '#/components/schemas/IncludedService'
+          description: Services included in the tour
+        policies:
+          type: array
+          items:
+            $ref: '#/components/schemas/TourPolicy'
+          description: Tour policies
+        serviceCombinations:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServiceCombination'
+          description: Alternative service packages
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp
+          readOnly: true
+
+    IncludedService:
+      type: object
+      description: Service included in a tour
+      required:
+        - serviceType
+        - serviceName
+        - quantity
+        - isMandatory
+      properties:
+        serviceType:
+          type: string
+          enum: [TRANSPORT, ACCOMMODATION, TICKET, FOOD, GUIDE, INSURANCE, OTHER]
+          description: Service type
+        serviceName:
+          type: string
+          description: Service name
+        quantity:
+          type: integer
+          minimum: 1
+          description: Quantity of this service
+        isMandatory:
+          type: boolean
+          description: Whether this service is mandatory
+        durationHours:
+          type: integer
+          minimum: 1
+          maximum: 24
+          description: Duration of this service in hours
+        configuration:
+          type: object
+          description: Type-specific configuration
+          additionalProperties: true
+
+    TourPolicy:
+      type: object
+      description: Tour policy
+      required:
+        - type
+        - description
+      properties:
+        type:
+          type: string
+          enum: [CANCELLATION, REFUND, MODIFICATION, MIN_PASSENGERS, MAX_PASSENGERS, AGE_RESTRICTION, HEALTH_REQUIREMENT, EQUIPMENT_REQUIRED, OTHER]
+          description: Policy type
+        description:
+          type: string
+          description: Policy description
+        value:
+          type: string
+          description: Policy value (optional)
+
+    ServiceCombination:
+      type: object
+      description: Alternative service package (sellable product in Vendure)
+      required:
+        - name
+        - sku
+        - services
+      properties:
+        name:
+          type: string
+          description: Combination name (e.g., "Economy Package", "Premium Package")
+        description:
+          type: string
+          description: Optional description
+        sku:
+          type: string
+          description: Stock Keeping Unit for Vendure integration
+        services:
+          type: array
+          items:
+            type: string
+          description: Ordered list of service names included in this combination
+
+    AddServiceCombinationRequest:
+      type: object
+      description: Request to add a service combination to a tour
+      required:
+        - name
+        - sku
+        - services
+      properties:
+        name:
+          type: string
+          description: Combination name
+          minLength: 1
+        description:
+          type: string
+          description: Optional description
+        sku:
+          type: string
+          description: Stock Keeping Unit for Vendure integration
+          minLength: 1
+        services:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          description: Ordered list of service names (must exist in tour's includedServices)
+        draftPriceInCents:
+          type: integer
+          format: int64
+          description: Draft price in cents for Vendure variant
+
+    CreateTourRequest:
+      type: object
+      description: Request to create a new tour
+      required:
+        - code
+        - name
+        - durationHours
+      properties:
+        code:
+          type: string
+          description: Tour code (1-37 uppercase alphanumeric characters)
+          minLength: 2
+          maxLength: 37
+        name:
+          type: string
+          description: Tour name
+          minLength: 1
+        description:
+          type: string
+          description: Tour description
+        durationHours:
+          type: integer
+          minimum: 1
+          maximum: 24
+          description: Duration in hours (1-24)
+        services:
+          type: array
+          description: Services to include in the tour
+          items:
+            $ref: '#/components/schemas/AddServiceRequest'
+
+    UpdateTourRequest:
+      type: object
+      description: Request to update a tour (only DRAFT tours can be updated)
+      properties:
+        name:
+          type: string
+          description: Tour name
+          minLength: 1
+        description:
+          type: string
+          description: Tour description
+        durationHours:
+          type: integer
+          minimum: 1
+          maximum: 24
+          description: Duration in hours (1-24)
+
+    AddServiceRequest:
+      type: object
+      description: Request to add a service to a tour
+      required:
+        - serviceType
+        - serviceName
+        - quantity
+      properties:
+        serviceType:
+          type: string
+          enum: [TRANSPORT, ACCOMMODATION, TICKET, FOOD, GUIDE, INSURANCE, OTHER]
+          description: Service type
+        serviceName:
+          type: string
+          description: Service name
+        quantity:
+          type: integer
+          minimum: 1
+          description: Quantity of this service
+        isMandatory:
+          type: boolean
+          default: false
+          description: Whether this service is mandatory
+        durationHours:
+          type: integer
+          minimum: 1
+          maximum: 24
+          description: Duration of this service in hours
+        configuration:
+          type: object
+          description: Type-specific configuration (TicketConfiguration, TransportConfiguration, FoodConfiguration)
+          additionalProperties: true
+
+    UpdateServiceRequest:
+      type: object
+      description: Request to update a service in a tour (all fields optional)
+      properties:
+        serviceName:
+          type: string
+          description: New service name (to rename the service)
+        serviceType:
+          type: string
+          enum: [TRANSPORT, ACCOMMODATION, TICKET, FOOD, GUIDE, INSURANCE, OTHER]
+          description: Service type
+        quantity:
+          type: integer
+          minimum: 1
+          description: Quantity of this service
+        isMandatory:
+          type: boolean
+          description: Whether this service is mandatory
+        durationHours:
+          type: integer
+          minimum: 1
+          maximum: 24
+          description: Duration of this service in hours
+
+    AddPolicyRequest:
+      type: object
+      description: Request to add a policy to a tour
+      required:
+        - policyType
+        - description
+      properties:
+        policyType:
+          type: string
+          enum: [CANCELLATION, REFUND, MODIFICATION, MIN_PASSENGERS, MAX_PASSENGERS, AGE_RESTRICTION, HEALTH_REQUIREMENT, EQUIPMENT_REQUIRED, OTHER]
+          description: Policy type
+        description:
+          type: string
+          description: Policy description
+        value:
+          type: string
+          description: Policy value (optional)
+
+    SuspendTourRequest:
+      type: object
+      description: Request to suspend a tour
+      required:
+        - reason
+      properties:
+        reason:
+          type: string
+          description: Reason for suspension
+          minLength: 1
+
+    ResponseMessage:
+      type: object
+      description: Return messages to the client
+      properties:
+        message:
+          type: string
+          description: Response message
+
+    ResponseError:
+      type: object
+      description: Return error messages to the client
+      properties:
+        error:
+          type: string
+          description: Error message
+
+  securitySchemes:
+    BasicAuth:
+      type: http
+      scheme: basic

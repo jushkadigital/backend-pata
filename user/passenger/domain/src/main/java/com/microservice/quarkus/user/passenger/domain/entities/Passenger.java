@@ -3,6 +3,7 @@ package com.microservice.quarkus.user.passenger.domain.entities;
 import java.time.Instant;
 import java.util.List;
 
+import com.microservice.quarkus.user.passenger.domain.events.PassengerRegisteredEvent;
 import com.microservice.quarkus.user.passenger.domain.shared.Entity;
 import com.microservice.quarkus.user.passenger.domain.shared.RootAggregate;
 
@@ -32,17 +33,22 @@ public class Passenger extends RootAggregate implements Entity<Passenger> {
   private String dni;
   private String phone;
 
-  public static Passenger createNew(String externalId, String email) {
+  public static Passenger createNew(String externalId, String email, String type) {
     Instant now = Instant.now();
-    return Passenger.builder()
+    Passenger passenger = Passenger.builder()
         .id(PassengerId.random())
         .status(PassengerStatus.INCOMPLETE_PROFILE)
         .externalId(externalId)
         .email(new EmailAddress(email))
-        .type(PassengerType.COMMON)
+        .type(PassengerType.valueOf(type.toUpperCase()))
         .createdAt(now)
         .updatedAt(now)
         .build();
+
+    // Registrar evento de dominio
+    passenger.registerEvent(new PassengerRegisteredEvent(externalId, email, type));
+
+    return passenger;
   }
 
   public void completeProfile(String firstNames, String lastNames, String dni, String phone) {

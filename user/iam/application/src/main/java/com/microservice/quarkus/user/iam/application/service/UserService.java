@@ -21,28 +21,39 @@ import java.util.UUID;
 public class UserService {
 
   @Inject
-  UserRepositoryImpl userRepository;
-
-  @Inject
   IdentityProvider keycloakClient;
 
   @Inject
   EventBus eventBus;
 
+  private UserRepository userRepository;
+
+  @Inject
+  public UserService(UserRepository userRepository) {
+    this.userRepository = userRepository;
+  }
+
   @Transactional
   public String register(CreateUserCommand cmd) {
     User existing = userRepository.findByEmail(new EmailAddress(cmd.email()));
     if (existing != null) {
-      throw new IllegalArgumentException("El usuario ya existe con email: " + cmd.email());
+      if (cmd.type().equals(existing.getType().toString())) {
+        throw new IllegalArgumentException("El usuario ya existe con email: " + cmd.email());
+      } else {
+
+      }
     }
 
     User user = User.createNew(cmd.email(), cmd.type());
     userRepository.save(user);
-
+    String externalId;
     try {
-      // String externalId = keycloakClient.createUser(cmd.email(), cmd.password(),
-      // cmd.type());
-      user.setExternalId(cmd.externalId());
+      if (!cmd.isFromKeycloak()) {
+        externalId = keycloakClient.createUser(cmd.email(), cmd.password());
+      } else {
+        externalId = cmd.externalId();
+      }
+      user.setExternalId(externalId);
       user.setSyncStatus(SyncStatus.SYNCED);
       userRepository.update(user);
     } catch (Exception e) {
@@ -54,7 +65,7 @@ public class UserService {
     UserRegisteredEvent event = new UserRegisteredEvent(
         user.getExternalId(),
         user.getEmail(),
-        user.getType());
+        cmd.type(), cmd.subtype());
 
     JsonObject oeu = JsonObject.mapFrom(event);
     eventBus.publish("iam.user.registered", oeu.encode());

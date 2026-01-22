@@ -1,0 +1,579 @@
+openapi: '3.0.2'
+info:
+  title: Payment REST API
+  version: '2.0'
+  description: API for payment operations - Product and Asset management with Vendure
+
+servers:
+  - url: /
+
+tags:
+  - name: Assets
+    description: Asset (image) upload operations
+  - name: Products
+    description: Product management operations
+  - name: Prices
+    description: Price lookup operations
+
+paths:
+  # =====================
+  # ASSETS
+  # =====================
+  /api/payment/assets:
+    post:
+      tags:
+        - Assets
+      operationId: uploadAsset
+      description: Upload a single image asset to Vendure
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+                - fileName
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Image file to upload (JPEG, PNG, WebP, GIF, SVG)
+                fileName:
+                  type: string
+                  description: Name for the file (e.g. image.webp)
+      responses:
+        '201':
+          description: Asset uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetResponse'
+        '400':
+          description: Invalid file
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        '503':
+          description: Vendure service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+
+  # =====================
+  # PRODUCTS
+  # =====================
+  /api/payment/products:
+    get:
+      tags:
+        - Products
+      operationId: getAllProducts
+      description: Get all products
+      responses:
+        '200':
+          description: Successfully returned list of products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Product'
+
+    post:
+      tags:
+        - Products
+      operationId: createProduct
+      description: Create a new product in Vendure
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProductRequest'
+      responses:
+        '201':
+          description: Product created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateProductResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        '503':
+          description: Vendure service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+
+  /api/payment/products/{productId}:
+    get:
+      tags:
+        - Products
+      operationId: getProductById
+      description: Get a product by its ID
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Product unique identifier
+      responses:
+        '200':
+          description: Successfully returned product
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+
+  /api/payment/products/slug/{slug}:
+    get:
+      tags:
+        - Products
+      operationId: getProductBySlug
+      description: Get a product by its slug
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Product slug
+      responses:
+        '200':
+          description: Successfully returned product
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+
+  /api/payment/products/{productId}/variants:
+    post:
+      tags:
+        - Products
+      operationId: createProductVariants
+      description: Create variants for a product
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Product unique identifier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateVariantsRequest'
+      responses:
+        '201':
+          description: Variants created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateVariantsResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+
+  /api/payment/products/search:
+    get:
+      tags:
+        - Products
+      operationId: searchProducts
+      description: Search products by term
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 2
+          description: Search term
+      responses:
+        '200':
+          description: Successfully returned matching products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Product'
+
+  # =====================
+  # PRICES
+  # =====================
+  /api/payment/prices/{productId}:
+    get:
+      tags:
+        - Prices
+      operationId: getProductPrice
+      description: Get the default price for a product
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Product unique identifier
+      responses:
+        '200':
+          description: Successfully returned price
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriceResponse'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+
+  /api/payment/prices/{productId}/variants/{variantId}:
+    get:
+      tags:
+        - Prices
+      operationId: getVariantPrice
+      description: Get the price for a specific variant
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Product unique identifier
+        - name: variantId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Variant unique identifier
+      responses:
+        '200':
+          description: Successfully returned price
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriceResponse'
+        '404':
+          description: Product or variant not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+
+  /api/payment/prices/calculate:
+    post:
+      tags:
+        - Prices
+      operationId: calculateTotal
+      description: Calculate total price for items
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalculatePriceRequest'
+      responses:
+        '200':
+          description: Successfully calculated total
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriceResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        '404':
+          description: Product or variant not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+
+  /api/payment/prices/sku/{sku}:
+    get:
+      tags:
+        - Prices
+      operationId: getPriceBySku
+      description: Get the price for a product variant by SKU
+      parameters:
+        - name: sku
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Product variant SKU
+      responses:
+        '200':
+          description: Successfully returned price
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriceResponse'
+        '404':
+          description: SKU not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+
+components:
+  schemas:
+    # =====================
+    # ASSETS
+    # =====================
+    AssetResponse:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          description: Vendure asset ID
+        name:
+          type: string
+          description: Asset filename
+        source:
+          type: string
+          description: Full URL to original asset
+        preview:
+          type: string
+          description: URL to preview/thumbnail
+
+    # =====================
+    # PRODUCTS
+    # =====================
+    Product:
+      type: object
+      required:
+        - id
+        - name
+        - slug
+        - enabled
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+        enabled:
+          type: boolean
+        featuredAssetId:
+          type: string
+          description: ID of the featured image asset
+        assetIds:
+          type: array
+          items:
+            type: string
+          description: IDs of all associated assets
+        variants:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductVariant'
+        syncedAt:
+          type: string
+          format: date-time
+
+    ProductVariant:
+      type: object
+      required:
+        - id
+        - sku
+        - name
+        - price
+        - enabled
+      properties:
+        id:
+          type: string
+        sku:
+          type: string
+        name:
+          type: string
+        price:
+          $ref: '#/components/schemas/Money'
+        enabled:
+          type: boolean
+        stockLevel:
+          type: integer
+
+    CreateProductRequest:
+      type: object
+      required:
+        - name
+        - slug
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+        assetIds:
+          type: array
+          items:
+            type: string
+          description: List of asset IDs to associate with product
+        featuredAssetId:
+          type: string
+          description: ID of the featured/main image
+
+    CreateProductResponse:
+      type: object
+      required:
+        - success
+      properties:
+        success:
+          type: boolean
+        productId:
+          type: string
+        errorMessage:
+          type: string
+
+    CreateVariantsRequest:
+      type: object
+      required:
+        - variants
+      properties:
+        variants:
+          type: array
+          items:
+            $ref: '#/components/schemas/CreateVariantRequest'
+          minItems: 1
+
+    CreateVariantRequest:
+      type: object
+      required:
+        - sku
+        - name
+      properties:
+        sku:
+          type: string
+        name:
+          type: string
+        price:
+          $ref: '#/components/schemas/Money'
+        stockOnHand:
+          type: integer
+          default: 100
+
+    CreateVariantsResponse:
+      type: object
+      required:
+        - success
+      properties:
+        success:
+          type: boolean
+        variantIds:
+          type: array
+          items:
+            type: string
+        errorMessage:
+          type: string
+
+    # =====================
+    # PRICES
+    # =====================
+    Money:
+      type: object
+      required:
+        - amount
+        - currency
+      properties:
+        amount:
+          type: number
+          format: double
+        currency:
+          type: string
+
+    PriceResponse:
+      type: object
+      required:
+        - price
+      properties:
+        productId:
+          type: string
+        variantId:
+          type: string
+        sku:
+          type: string
+        price:
+          $ref: '#/components/schemas/Money'
+        quantity:
+          type: integer
+        total:
+          $ref: '#/components/schemas/Money'
+
+    CalculatePriceRequest:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PriceItem'
+          minItems: 1
+
+    PriceItem:
+      type: object
+      required:
+        - quantity
+      properties:
+        productId:
+          type: string
+        variantId:
+          type: string
+        sku:
+          type: string
+        quantity:
+          type: integer
+          minimum: 1
+
+    ResponseError:
+      type: object
+      properties:
+        error:
+          type: string
+
+  securitySchemes:
+    BasicAuth:
+      type: http
+      scheme: basic

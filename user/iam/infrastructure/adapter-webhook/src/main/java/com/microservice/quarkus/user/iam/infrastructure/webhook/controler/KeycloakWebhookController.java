@@ -6,7 +6,7 @@ import java.util.Map;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.microservice.quarkus.user.iam.infrastructure.webhook.controler.dto.KeycloakDTO;
-import com.microservice.quarkus.user.iam.infrastructure.webhook.event.WebhookPayload;
+import com.microservice.quarkus.user.iam.infrastructure.webhook.event.WebhookKeycloakPayload;
 
 import io.vertx.mutiny.core.eventbus.EventBus; // Importante: versión Mutiny
 import jakarta.inject.Inject;
@@ -37,7 +37,7 @@ public class KeycloakWebhookController {
       return Response.accepted().build();
     }
     // 1. Convertir DTO externo a Payload interno
-    WebhookPayload payload = new WebhookPayload(
+    WebhookKeycloakPayload payload = new WebhookKeycloakPayload(
         dto.getType(),
         dto.getUserId().toString(),
         dto.getClientId().toString(),

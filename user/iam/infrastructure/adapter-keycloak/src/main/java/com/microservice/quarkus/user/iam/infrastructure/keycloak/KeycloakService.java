@@ -74,7 +74,7 @@ public class KeycloakService {
         .map(Object::toString).orElse("NO_GROUP");
   }
 
-  public String createUser(String email, String password, UserType roleType) {
+  public String createUser(String email, String password) {
 
     UsersResource userResource = keycloak.realm(REALM_NAME).users();
     List<UserRepresentation> existingUsers = userResource.searchByUsername(email, true);
@@ -145,7 +145,11 @@ public class KeycloakService {
     return null;
   }
 
-  public String createClient(String name) {
+  public String createClient(String name, List<String> items) {
+    List<String> result = new ArrayList<>();
+    result.add("http://localhost:8081/*");
+
+    result.addAll(items);
     ClientRepresentation clientRep = new ClientRepresentation();
     clientRep.setName(name);
     clientRep.setEnabled(true);
@@ -157,7 +161,17 @@ public class KeycloakService {
     clientRep.setStandardFlowEnabled(true); // Authorization Code Flow
     clientRep.setDirectAccessGrantsEnabled(true);
 
-    clientRep.setRedirectUris(Arrays.asList("http://localhost:8081/*", "https://jwt.io", "http://localhost:4000/*"));
+    clientRep.setRedirectUris(result);
+
+    Map<String, String> atributos = new HashMap<>();
+
+    // 5. Agregar la configuración de Post Logout al mapa
+    for (String item : items) {
+      atributos.put("post.logout.redirect.uris", item);
+    }
+
+    // 6. Asignar el mapa lleno al objeto cliente
+    clientRep.setAttributes(atributos);
 
     Response response = keycloak.realm(REALM_NAME).clients().create(clientRep);
     if (response.getStatus() == 201) {
@@ -166,7 +180,6 @@ public class KeycloakService {
       return clientUuid;
     } else {
       System.out.println("Error " + response.getStatus());
-
     }
     response.close();
     return "";
@@ -204,8 +217,7 @@ public class KeycloakService {
     return new TenantConfigDTO(
         clientInfo.id(),
         clientInfo.secret(),
-        "http://localhost:8080/realms/" + REALM_NAME
-    );
+        "http://localhost:8080/realms/" + REALM_NAME);
   }
 
   public String getClientNameById(String clientId) {
@@ -230,46 +242,39 @@ public class KeycloakService {
     }
   }
 
-  public void assignClientRoleToGroup(String groupName, String clientId, String roleName) {
+  public void assignClientRoleToGroup(String groupId, String clientId, String roleName) {
     System.out.println("ENTRA ASSAING");
     RealmResource realm = keycloak.realm(REALM_NAME);
     try {
-      // 1. BUSCAR EL GRUPO (Necesitamos su ID UUID)
-      // .groups(search, first, max)
-      List<GroupRepresentation> groups = realm.groups().groups(groupName, 0, 1);
-      if (groups.isEmpty()) {
-        throw new RuntimeException("El grupo '" + groupName + "' no existe.");
-      }
-      String groupUuid = groups.get(0).getId();
-
-      // 2. BUSCAR EL CLIENTE (Necesitamos su ID UUID, no el clientId string)
+      // 1. BUSCAR EL CLIENTE (Necesitamos su ID UUID, no el clientId string)
       List<ClientRepresentation> clients = realm.clients().findByClientId(clientId);
       if (clients.isEmpty()) {
         throw new RuntimeException("El cliente '" + clientId + "' no existe.");
       }
       String clientUuid = clients.get(0).getId();
 
-      System.out.println(clientUuid);
+      System.out.println("Client UUID: " + clientUuid);
 
-      System.out.println("ASSAING RO");
-      // 3. BUSCAR EL ROL (Necesitamos el objeto Role completo)
+      // 2. BUSCAR EL ROL (Necesitamos el objeto Role completo)
       // Nota: Buscamos el rol DENTRO del cliente específico usando clientUuid
       RoleRepresentation clientRole = realm.clients().get(clientUuid)
           .roles().get(roleName).toRepresentation();
 
-      System.out.println("PASEEE CLIENT ROL");
-      // 4. HACER LA VINCULACIÓN FINAL
+      System.out.println("Role found: " + roleName);
+
+      // 3. HACER LA VINCULACIÓN FINAL
       // Entramos al grupo -> roles -> clientLevel(clientUuid) -> add
-      realm.groups().group(groupUuid)
+      realm.groups().group(groupId)
           .roles()
           .clientLevel(clientUuid)
           .add(Collections.singletonList(clientRole));
 
       System.out.println(
-          "✅ ÉXITO: Rol '" + roleName + "' (del cliente " + clientId + ") asignado al grupo '" + groupName + "'");
+          "✅ ÉXITO: Rol '" + roleName + "' (del cliente " + clientId + ") asignado al grupo ID: " + groupId);
 
     } catch (Exception e) {
       System.err.println("❌ ERROR asignando rol: " + e.getMessage());
+      e.printStackTrace();
       // Aquí podrías lanzar una excepción personalizada
     }
   }
@@ -363,8 +368,9 @@ public class KeycloakService {
 
       HttpClient client = HttpClient.newHttpClient();
 
+      String keycloakBaseUrl = System.getenv("KEYCLOAK_INTERNAL_URL") != null ? System.getenv("KEYCLOAK_INTERNAL_URL") : "http://localhost:8080";
       HttpRequest request = HttpRequest.newBuilder()
-          .uri(URI.create(String.format("http://localhost:8080/realms/%s/webhooks", REALM_NAME)))
+          .uri(URI.create(String.format("%s/realms/%s/webhooks",keycloakBaseUrl, REALM_NAME)))
           .header("Authorization", "Bearer " + token) // Aquí inyectas el token
           .header("Content-Type", "application/json")
           .POST(BodyPublishers.ofString(jsonBody))
@@ -376,7 +382,7 @@ public class KeycloakService {
       System.out.println("Iniciando Webhooks: " + response.body());
 
       HttpRequest request2 = HttpRequest.newBuilder()
-          .uri(URI.create(String.format("http://localhost:8080/realms/%s/webhooks", REALM_NAME)))
+          .uri(URI.create(String.format("%s/realms/%s/webhooks",keycloakBaseUrl, REALM_NAME)))
           .header("Authorization", "Bearer " + token) // Aquí inyectas el token
           .GET()
           .build();
@@ -432,6 +438,171 @@ public class KeycloakService {
     realmResource.update(realmRep);
 
     System.out.println("Configuración de Webhook actualizada exitosamente.");
+  }
+
+  /**
+   * Crea grupos y subgrupos jerárquicos en Keycloak
+   * 
+   * @param groupHierarchies Lista bidimensional donde cada sublista representa
+   *                         una ruta jerárquica
+   *                         Ejemplo: [["Grupo1", "SubGrupo1", "SubSubGrupo1"],
+   *                         ["Grupo2", "SubGrupo2"]]
+   * @return Mapa con las rutas y sus IDs creados
+   */
+  public Map<String, String> createGroupHierarchy(List<List<String>> groupHierarchies) {
+    RealmResource realm = keycloak.realm(REALM_NAME);
+    Map<String, String> createdGroups = new HashMap<>();
+
+    for (List<String> hierarchy : groupHierarchies) {
+      if (hierarchy == null || hierarchy.isEmpty()) {
+        continue;
+      }
+
+      String parentGroupId = null;
+      StringBuilder pathBuilder = new StringBuilder();
+
+      for (int i = 0; i < hierarchy.size(); i++) {
+        String groupName = hierarchy.get(i);
+
+        if (groupName == null || groupName.trim().isEmpty()) {
+          continue;
+        }
+
+        // Construir la ruta completa para este grupo
+        if (pathBuilder.length() > 0) {
+          pathBuilder.append("/");
+        }
+        pathBuilder.append(groupName);
+        String fullPath = pathBuilder.toString();
+
+        // Verificar si el grupo ya existe en este nivel
+        String groupId = findGroupByNameAndParent(realm, groupName, parentGroupId);
+
+        if (groupId == null) {
+          // El grupo no existe, crearlo
+          GroupRepresentation newGroup = new GroupRepresentation();
+          newGroup.setName(groupName);
+
+          Response response;
+          if (parentGroupId == null) {
+            // Crear grupo de nivel raíz
+            response = realm.groups().add(newGroup);
+          } else {
+            // Crear subgrupo
+            response = realm.groups().group(parentGroupId).subGroup(newGroup);
+          }
+
+          try {
+            if (response.getStatus() == 201) {
+              groupId = extractIdFromLocation(response.getHeaderString("Location"));
+              createdGroups.put(fullPath, groupId);
+              System.out.println("✅ Grupo creado: " + fullPath + " (ID: " + groupId + ")");
+            } else {
+              String errorMessage = response.hasEntity()
+                  ? response.readEntity(String.class)
+                  : "Error desconocido";
+              System.err.printf("❌ Error al crear grupo '%s'. Status: %d. Mensaje: %s%n",
+                  fullPath, response.getStatus(), errorMessage);
+              continue;
+            }
+          } finally {
+            response.close();
+          }
+        } else {
+          System.out.println("ℹ️ Grupo ya existe: " + fullPath + " (ID: " + groupId + ")");
+          createdGroups.put(fullPath, groupId);
+        }
+
+        // Actualizar el parent ID para el siguiente nivel
+        parentGroupId = groupId;
+      }
+    }
+
+    return createdGroups;
+  }
+
+  /**
+   * Busca un grupo por nombre y padre
+   * 
+   * @param realm     RealmResource
+   * @param groupName Nombre del grupo a buscar
+   * @param parentId  ID del grupo padre (null para grupos raíz)
+   * @return ID del grupo si existe, null si no existe
+   */
+  private String findGroupByNameAndParent(RealmResource realm, String groupName, String parentId) {
+    System.out.println("Desde findByNameAndParenst");
+    System.out.println(groupName);
+    try {
+      List<GroupRepresentation> groups;
+
+      if (parentId == null) {
+        // Buscar en grupos raíz
+        groups = realm.groups().groups(groupName, 0, 10, false);
+      } else {
+        // Buscar en subgrupos del padre
+        groups = realm.groups().group(parentId).getSubGroups(0, 10, true);
+
+      }
+
+      // Filtrar por nombre exacto (la búsqueda puede devolver coincidencias
+      // parciales)
+      return groups.stream()
+          .filter(g -> g.getName().equals(groupName))
+          .findFirst()
+          .map(GroupRepresentation::getId)
+          .orElse(null);
+
+    } catch (Exception e) {
+      System.err.println("Error buscando grupo '" + groupName + "': " + e.getMessage());
+      return null;
+    }
+  }
+
+  /**
+   * Busca un grupo por su ruta jerárquica (ej: "admin/super-admin")
+   * 
+   * @param groupPath Ruta del grupo separada por /
+   * @return ID del grupo si existe, null si no existe
+   */
+  public String findGroupByPath(String groupPath) {
+    RealmResource realm = keycloak.realm(REALM_NAME);
+    String[] parts = groupPath.split("/");
+
+    String currentParentId = null;
+
+    for (String groupName : parts) {
+      String groupId = findGroupByNameAndParent(realm, groupName, currentParentId);
+      if (groupId == null) {
+        System.err.println("No se encontró el grupo '" + groupName + "' en la ruta '" + groupPath + "'");
+        return null;
+      }
+      currentParentId = groupId;
+    }
+
+    return currentParentId;
+  }
+
+  public void assignUserToGroup(String userId, String groupId) {
+    if (userId == null || groupId == null) {
+      throw new IllegalArgumentException("UserId y GroupId son obligatorios");
+    }
+
+    RealmResource realm = keycloak.realm(REALM_NAME);
+    // Navegación: Realm -> Users -> Usuario Específico -> Unirse a Grupo
+    // Esto ejecuta internamente un PUT
+    // /admin/realms/{realm}/users/{userId}/groups/{groupId}
+    try {
+      realm.users()
+          .get(userId)
+          .joinGroup(groupId);
+
+      System.out.println("Usuario " + userId + " agregado exitosamente al grupo " + groupId);
+
+    } catch (Exception e) {
+      // Ocurre por problemas de conexión o permisos
+      System.err.println("Error al asignar grupo: " + e.getMessage());
+      throw e;
+    }
   }
 
 }

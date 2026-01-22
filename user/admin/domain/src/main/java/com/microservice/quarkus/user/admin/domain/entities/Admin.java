@@ -3,6 +3,7 @@ package com.microservice.quarkus.user.admin.domain.entities;
 import java.time.Instant;
 import java.util.List;
 
+import com.microservice.quarkus.user.admin.domain.events.AdminRegisteredEvent;
 import com.microservice.quarkus.user.admin.domain.shared.Entity;
 import com.microservice.quarkus.user.admin.domain.shared.RootAggregate;
 
@@ -28,7 +29,7 @@ public class Admin extends RootAggregate implements Entity<Admin> {
 
   public static Admin createNew(String externalId, String email, String type) {
     Instant now = Instant.now();
-    return Admin.builder()
+    Admin admin = Admin.builder()
         .id(AdminId.random())
         .externalId(externalId)
         .email(new EmailAddress(email))
@@ -36,6 +37,11 @@ public class Admin extends RootAggregate implements Entity<Admin> {
         .createdAt(now)
         .updatedAt(now)
         .build();
+
+    // Registrar evento de dominio
+    admin.registerEvent(new AdminRegisteredEvent(externalId, email, type));
+
+    return admin;
   }
 
   @Override

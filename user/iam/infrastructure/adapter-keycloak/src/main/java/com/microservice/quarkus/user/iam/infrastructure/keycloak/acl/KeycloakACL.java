@@ -27,8 +27,8 @@ public class KeycloakACL implements IdentityProvider {
   KeycloakRoleMapper keycloakRoleMapper;
 
   @Override
-  public String createUser(String email, String password, UserType typeUser) {
-    String kcUserId = keycloakService.createUser(email, password, typeUser);
+  public String createUser(String email, String password) {
+    String kcUserId = keycloakService.createUser(email, password);
     return kcUserId;
   }
 
@@ -44,8 +44,8 @@ public class KeycloakACL implements IdentityProvider {
   }
 
   @Override
-  public String createClient(String name) {
-    return keycloakService.createClient(name);
+  public String createClient(String name, List<String> items) {
+    return keycloakService.createClient(name, items);
   }
 
   @Override
@@ -66,8 +66,8 @@ public class KeycloakACL implements IdentityProvider {
   }
 
   @Override
-  public void assingClientRoleToGroup(String groupName, String clientId, String roleName) {
-    keycloakService.assignClientRoleToGroup(groupName, clientId, roleName);
+  public void assingClientRoleToGroup(String groupId, String clientId, String roleName) {
+    keycloakService.assignClientRoleToGroup(groupId, clientId, roleName);
   }
 
   @Override
@@ -93,6 +93,21 @@ public class KeycloakACL implements IdentityProvider {
   @Override
   public User getUserById(String id) {
     return keycloakUserMapper.toDomain(keycloakService.getUserById(id));
+  }
+
+  @Override
+  public Map<String, String> createGroupHierarchy(List<List<String>> groupHierarchies) {
+    return keycloakService.createGroupHierarchy(groupHierarchies);
+  }
+
+  @Override
+  public String findGroupByPath(String groupPath) {
+    return keycloakService.findGroupByPath(groupPath);
+  }
+
+  @Override
+  public void assignUserToGroup(String userId, String groupId) {
+    keycloakService.assignUserToGroup(userId, groupId);
   }
 
 }

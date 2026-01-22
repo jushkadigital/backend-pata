@@ -1,0 +1,20 @@
+rabbitmq-host: rabbitmq
+rabbitmq-port: 5672
+rabbitmq-username: admin
+rabbitmq-password: admin123
+"%dev":
+  rabbitmq-host: localhost
+mp:
+  messaging:
+    outgoing:
+      domain-events-out:
+        connector: smallrye-rabbitmq
+        # Configuración del Exchange
+        exchange:
+          name: tourism-exchange # El nombre del "buzón" en RabbitMQ
+          type: topic            # 'topic' permite usar routing keys como "iam.user.created"
+          durable: true
+        # Clave por defecto (la sobreescribiremos en el código, pero es obligatoria)
+        default-routing-key: "#"
+        # Hacer que el canal sea transaccional/confirmado (espera ACK)
+        merge: true

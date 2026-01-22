@@ -31,7 +31,24 @@
       <artifactId>passengerbootstrap</artifactId>
       <version>0.0.1-SNAPSHOT</version>
     </dependency>
-    <!-- YAML config -->
+    <dependency>
+      <groupId>com.microservice.quarkus</groupId>
+      <artifactId>shared-adapter-postgresql</artifactId>
+      <version>0.0.1-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>com.microservice.quarkus</groupId>
+      <artifactId>shared-adapter-eventbus</artifactId>
+      <version>0.0.1-SNAPSHOT</version>
+    </dependency>
+
+    <!-- Catalog Tours -->
+    
+    <!-- Payment -->
+   
+    <!-- Catalog Shared -->
+    
+        <!-- YAML config -->
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-config-yaml</artifactId>

@@ -1,3 +1,7 @@
+webhook:
+    payload:
+        secret: ${WEBHOOK_PAYLOAD_SECRET:my-secure-webhook-secret}
+
 '%prod':
     keycloak:
         url: http://localhost:8180

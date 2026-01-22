@@ -29,7 +29,7 @@ public class UserEntity {
   @Id
   private String id;
   @Convert(converter = EmailAddressConverter.class)
-  @Column(name = "email", unique = true, nullable = false)
+  @Column(name = "email", nullable = false)
   private EmailAddress email;
 
   @Column(name = "external_id", unique = true)

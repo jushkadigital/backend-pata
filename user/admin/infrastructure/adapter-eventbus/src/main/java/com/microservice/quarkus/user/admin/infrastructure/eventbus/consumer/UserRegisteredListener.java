@@ -23,10 +23,20 @@ public class UserRegisteredListener {
 
     System.out.println(jsonEvent);
 
-    CreateAdminCommand cmd = (jsonEvent.mapTo(CreateAdminCommand.class));
+    // Transformamos el Evento (Infraestructura) a un Comando (Aplicación)
+    if (jsonEvent.getString("type").equals("ADMIN")) {
 
-    System.out.println(cmd);
-    System.out.println("⚡ Admin Module: Recibido evento de usuario " + event);
+      CreateAdminCommand cmd = (jsonEvent.mapTo(CreateAdminCommand.class));
+
+      System.out.println(cmd);
+      System.out.println("⚡ Admin Module: Recibido evento de usuario " + event);
+
+      adminService.register(cmd);
+      System.out.println("⚡ Admin Module: Admin Creado " + event);
+
+    } else {
+      System.out.println("NO DEBI ENTRAR");
+    }
 
     // Transformamos el Evento (Infraestructura) a un Comando (Aplicación)
 

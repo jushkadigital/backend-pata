@@ -35,6 +35,7 @@
   </plugins>
   </build>
     <modules>
+        <module>shared</module>
         <module>iam</module>
         <module>admin</module>
         <module>passenger</module>

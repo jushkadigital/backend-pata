@@ -1,0 +1,6 @@
+# Vendure Admin API configuration
+vendure:
+  url: ${VENDURE_URL:http://172.17.0.1:3001}
+  admin:
+    username: ${VENDURE_ADMIN_USERNAME:superadmin}
+    password: ${VENDURE_ADMIN_PASSWORD:superadmin}
