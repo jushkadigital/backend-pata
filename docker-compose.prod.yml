@@ -92,11 +92,9 @@ services:
     # 3. EL TRUCO DEL COMMAND
     # Al quitar '--optimized', obligamos a Keycloak a leer las variables KC_..._ENABLED
     # y auto-configurarse al arrancar. Tardará unos segundos más en iniciar, pero funcionará.
-    entrypoint: ["/bin/bash", "-c"]
-    command:  >
-      "/opt/keycloak/bin/kc.sh build --health-enabled=true &&
-       /opt/keycloak/bin/kc.sh start --optimized"
-    
+    entrypoint: ["/bin/sh"]
+    command: -c "/opt/keycloak/bin/kc.sh build && exec /opt/keycloak/bin/kc.sh start --optimized --log-level=ERROR,FATAL"
+
     networks:
       - prod-network
     
