@@ -20,9 +20,8 @@ services:
       - QUARKUS_DATASOURCE_JDBC_URL=jdbc:postgresql://postgres:5432/keycloak
       - QUARKUS_DATASOURCE_USERNAME=keycloak
       - QUARKUS_DATASOURCE_PASSWORD=keycloak
-    ports:
-      # CAMBIO: Mapeamos el 8081 de tu PC al 8080 del contenedor
-      - "8081:8081"
+    expose:
+      - "8081"
     depends_on:
       keycloak:
         condition: service_healthy
@@ -98,9 +97,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    ports:
-      - "8080:8080"
-    
+    expose:
+      - "8080"
+        
     # 3. EL TRUCO DEL COMMAND
     # Al quitar '--optimized', obligamos a Keycloak a leer las variables KC_..._ENABLED
     # y auto-configurarse al arrancar. Tardará unos segundos más en iniciar, pero funcionará.
