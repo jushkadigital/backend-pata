@@ -30,6 +30,7 @@ services:
         condition: service_healthy
     networks:
       - prod-network
+      - red-compartida
 
   # ----------------------------------------------------------------
   # 2. BASE DE DATOS (POSTGRES)
@@ -115,3 +116,6 @@ volumes:
 networks:
   prod-network:
     driver: bridge
+  red-compartida:
+    external: true      # <--- ¡ESTO ES LO IMPORTANTE!
+    name: red-compartida # Asegura que busque el nombre exacto
