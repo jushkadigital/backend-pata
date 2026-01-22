@@ -88,12 +88,8 @@ services:
       test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080 || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 15
-      start_period: 60s 
-    extra_hosts:
-      # Este mapeo hace que host.docker.internal resuelva al host
-      - "host.docker.internal:host-gateway"
-
+      retries: 10
+      start_period: 100s 
     depends_on:
       postgres:
         condition: service_healthy
@@ -104,7 +100,7 @@ services:
     # Al quitar '--optimized', obligamos a Keycloak a leer las variables KC_..._ENABLED
     # y auto-configurarse al arrancar. Tardará unos segundos más en iniciar, pero funcionará.
     entrypoint: ["/bin/sh"]
-    command: -c "exec /opt/keycloak/bin/kc.sh start --log-level=ERROR,FATAL"
+    command: -c "exec /opt/keycloak/bin/kc.sh start"
     
     networks:
       - prod-network
