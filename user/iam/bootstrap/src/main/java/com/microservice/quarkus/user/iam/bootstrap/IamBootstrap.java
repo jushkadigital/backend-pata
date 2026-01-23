@@ -17,7 +17,7 @@ import jakarta.inject.Inject;
 @ApplicationScoped
 public class IamBootstrap {
 
-  private static final int MAX_RETRIES = 80;
+  private static final int MAX_RETRIES = 200;
   private static final int RETRY_DELAY_MS = 3000;
 
   public record RoleDefinition(String name, String description) {
