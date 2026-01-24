@@ -102,6 +102,9 @@ volumes:
   postgres_data:
 
 networks:
+  proxiable:
+    external: true
+    name: proxiable # Asegúrate de que este nombre coincida exactamente con tu red externa
   prod-network:
     driver: bridge
   red-compartida:
