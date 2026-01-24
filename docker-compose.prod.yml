@@ -69,6 +69,11 @@ services:
       KC_DB_PASSWORD: keycloak
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_PROXY: edge
+  
+      KC_HOSTNAME: auth.patarutera.pe
+  
+  
       
       # 1. ACTIVACIÓN DE FUNCIONALIDADES
       # Esto equivale a ejecutar el "build --health-enabled" que leíste
