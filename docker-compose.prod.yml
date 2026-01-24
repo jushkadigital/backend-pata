@@ -28,6 +28,8 @@ services:
     networks:
       - prod-network
       - red-compartida
+      - proxiable
+
 
   # ----------------------------------------------------------------
   # 2. BASE DE DATOS (POSTGRES)
