@@ -99,6 +99,8 @@ services:
 
     networks:
       - prod-network
+      - proxiable
+
     
 volumes:
   postgres_data:
