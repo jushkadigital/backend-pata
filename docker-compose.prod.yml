@@ -71,7 +71,7 @@ services:
       KEYCLOAK_ADMIN_PASSWORD: admin
       KC_PROXY: edge
   
-      KC_HOSTNAME: auth.patarutera.pe
+      KC_HOSTNAME: https://auth.patarutera.pe
   
   
       
@@ -83,7 +83,7 @@ services:
       # Configuración HTTP
       KC_HTTP_ENABLED: true
       KC_HOSTNAME_STRICT: false
-      KC_HOSTNAME_STRICT_HTTPS: false
+      KC_HOSTNAME_STRICT_HTTPS: true
       
     # 2. HEALTHCHECK "A PRUEBA DE BALAS"
     # La documentación dice que 'curl' puede no estar. 
