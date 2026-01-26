@@ -8,7 +8,7 @@ services:
     image: urgosxd7/mi-app-prod:v1
     container_name: quarkus-app-prod
     restart: always
-    env-file:
+    env_file:
       - .env
     expose:
       - "8081"
