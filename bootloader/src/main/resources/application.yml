@@ -24,6 +24,9 @@ quarkus:
     http:
       cors:
         origins: /.*/
+    vertx:
+      max-event-loop-execute-time: 10s
+      warning-exception-time: 10s
 
   vault:
     url: http://localhost:8200
