@@ -24,13 +24,6 @@ quarkus:
 # ==========================================
 "%prod":
   quarkus:
-    oidc:
-      # Sobrescribimos la URL para que no busque en localhost, sino en la variable
-      auth-server-url: ${KEYCLOAK_INTERNAL_URL}/realms/quarkus
-      
-      # Si no usas client-id/secret para validar tokens, no los pongas aquí.
-      # Solo auth-server-url basta para validar firmas JWT.
-
     keycloak:
       admin-client:
         # IMPORTANTE: Sobrescribimos esto. Si no lo hacemos, 
