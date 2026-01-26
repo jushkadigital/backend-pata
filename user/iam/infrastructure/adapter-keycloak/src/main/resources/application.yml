@@ -36,10 +36,5 @@ quarkus:
         # IMPORTANTE: Sobrescribimos esto. Si no lo hacemos, 
         # intentará usar http://localhost:8080 del bloque de arriba y fallará.
         server-url: ${KEYCLOAK_INTERNAL_URL}
-        tls-configuration-name: my-keycloak-tls
-    tls:
-      my-keycloak-tls:
-        trust-store:
-          p12:
-            path: certs/keycloak-truststore.p12
-            password: secret
+        tls-configuration-name: kc-mtls
+    
