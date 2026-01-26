@@ -3,6 +3,15 @@ quarkus:
     host: 0.0.0.0
     cors:
      enabled: true
+    ssl:
+      native: true
+    http:
+      cors:
+        origins: /.*/
+    vertx:
+      max-event-loop-execute-time: 10s
+      warning-exception-time: 10s
+
   banner:
     # remove quarkus logo at startup logs
     enabled: false
