@@ -19,6 +19,8 @@ quarkus:
 
 "%prod":
   quarkus:
+    ssl:
+      native: true
     http:
       cors:
         origins: /.*/
