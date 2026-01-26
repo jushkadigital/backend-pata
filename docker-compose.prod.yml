@@ -19,14 +19,6 @@ services:
       - prod-network
       - red-compartida
       - proxiable
-    environment:
-      # ... tus otras variables ...
-      
-      # 1. Ver logs detallados de la librería de Keycloak
-      - QUARKUS_LOG_CATEGORY__ORG_KEYCLOAK__LEVEL=DEBUG
-      
-      # 2. Ver si el cliente HTTP de Quarkus está fallando
-      - QUARKUS_LOG_CATEGORY__ORG_JBOSS_RESTEASY__LEVEL=DEBUG
 
 
   # ----------------------------------------------------------------
