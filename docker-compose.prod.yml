@@ -8,18 +8,8 @@ services:
     image: urgosxd7/mi-app-prod:v1
     container_name: quarkus-app-prod
     restart: always
-    environment:
-      # Conexión interna: Dentro de Docker, Keycloak sigue escuchando en el 8080
-      - KEYCLOAK_INTERNAL_URL=http://keycloak-prod:8080
-      
-      - KEYCLOAK_ADMIN_USER=${KEYCLOAK_ADMIN:-admin}
-      - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD:-admin}
-      - QUARKUS_OIDC_TOKEN_ISSUER=any
-      
-      # Base de datos
-      - QUARKUS_DATASOURCE_JDBC_URL=jdbc:postgresql://postgres-prod:5432/keycloak
-      - QUARKUS_DATASOURCE_USERNAME=keycloak
-      - QUARKUS_DATASOURCE_PASSWORD=keycloak
+    env-file:
+      - .env
     expose:
       - "8081"
     depends_on:
@@ -39,12 +29,12 @@ services:
     container_name: postgres-prod
     restart: always
     environment:
-      POSTGRES_DB: keycloak
-      POSTGRES_USER: keycloak
-      POSTGRES_PASSWORD: keycloak
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-keycloak} -d ${POSTGRES_DB:-keycloak}"]  # Usa defaults si no seteados
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aa} -d ${POSTGRES_DB:-aa}"]  # Usa defaults si no seteados
       interval: 10s
       timeout: 5s
       retries: 5
@@ -53,58 +43,6 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - prod-network
-
-  # ----------------------------------------------------------------
-  # 3. KEYCLOAK (PhaseTwo)
-  # ----------------------------------------------------------------
-  keycloak:
-    image: quay.io/phasetwo/phasetwo-keycloak:26.4.2
-    container_name: keycloak-prod
-    restart: always
-    environment:
-      # ... (Tus credenciales de DB y Admin aquí) ...
-      KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
-      KC_DB_USERNAME: keycloak
-      KC_DB_PASSWORD: keycloak
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
-      KC_PROXY: edge
-  
-      KC_HOSTNAME: https://auth.patarutera.pe
-  
-  
-      
-      # 1. ACTIVACIÓN DE FUNCIONALIDADES
-      # Esto equivale a ejecutar el "build --health-enabled" que leíste
-      KC_HEALTH_ENABLED: true
-      KC_METRICS_ENABLED: true 
-      
-      # Configuración HTTP
-      KC_HTTP_ENABLED: true
-      KC_HOSTNAME_STRICT: false
-      KC_HOSTNAME_STRICT_HTTPS: true
-      
-    # 2. HEALTHCHECK "A PRUEBA DE BALAS"
-    # La documentación dice que 'curl' puede no estar. 
-    # Este comando usa Bash puro para intentar abrir una conexión al puerto 8080.
-    # Si conecta, devuelve éxito (exit 0). Si falla, da error (exit 1).
-
-    depends_on:
-      postgres:
-        condition: service_healthy
-    expose:
-      - "8080"
-        
-    # 3. EL TRUCO DEL COMMAND
-    # Al quitar '--optimized', obligamos a Keycloak a leer las variables KC_..._ENABLED
-    # y auto-configurarse al arrancar. Tardará unos segundos más en iniciar, pero funcionará.
-    entrypoint: ["/bin/sh"]
-    command: -c "/opt/keycloak/bin/kc.sh build && exec /opt/keycloak/bin/kc.sh start --optimized --log-level=ERROR,FATAL"
-
-    networks:
-      - prod-network
-      - proxiable
 
     
 volumes:
