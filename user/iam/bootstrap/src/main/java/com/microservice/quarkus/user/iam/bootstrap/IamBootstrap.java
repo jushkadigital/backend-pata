@@ -70,7 +70,7 @@ public class IamBootstrap {
 
   private void initializeKeycloak() {
     System.out.println("IAM Bootstrap: Realm created/verified");
-
+    clientService.getRealm();
     //clientService.configurarWebhook("http://172.17.0.1:8081/webhooks/keycloak");
     clientService.configurarWebhook("http://quarkus-app-prod:8081/webhooks/keycloak");
     //clientService.getToken("http://172.17.0.1:8081/webhooks/keycloak");
