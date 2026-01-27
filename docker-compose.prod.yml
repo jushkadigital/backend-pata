@@ -19,6 +19,12 @@ services:
       - prod-network
       - red-compartida
       - proxiable
+    environment:
+      KEYCLOAK_INTERNAL_URL: http://keycloak-prod:8080
+      KEYCLOAK_ADMIN_USER: adminpds
+      KEYCLOAK_ADMIN_PASSWORD: adminpds
+      QUARKUS_OIDC_TOKEN_ISSUER: any
+
 
 
   # ----------------------------------------------------------------
