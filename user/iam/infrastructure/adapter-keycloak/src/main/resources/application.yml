@@ -29,16 +29,3 @@ quarkus:
         # IMPORTANTE: Sobrescribimos esto. Si no lo hacemos, 
         # intentará usar http://localhost:8080 del bloque de arriba y fallará.
         server-url: ${KEYCLOAK_INTERNAL_URL}
-        tls-configuration-name: kc-mtls
-    
-    tls:
-      kc-mtls:
-        key-store:
-          p12:
-            path: certs/client-keystore.p12
-            password: secret
-        trust-store:
-          p12:
-            path: certs/client-truststore.p12
-            password: secret
-
