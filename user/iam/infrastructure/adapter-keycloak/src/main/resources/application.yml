@@ -32,3 +32,16 @@ quarkus:
         # IMPORTANTE: Sobrescribimos esto. Si no lo hacemos, 
         # intentará usar http://localhost:8080 del bloque de arriba y fallará.
         server-url: ${KEYCLOAK_INTERNAL_URL}
+        realm: master                # El realm donde vive el admin-cli
+        client-id: admin-cli         # El cliente por defecto
+        
+        # -----------------------------------------------------
+        # CAMBIOS CLAVE PARA USAR ADMIN-CLI POR DEFECTO:
+        # -----------------------------------------------------
+        
+        # 1. Cambiamos el tipo de grant a PASSWORD
+        grant-type: password         
+        
+        # 2. Usamos las credenciales del Super Admin (el humano)
+        username: adminpds              # O el usuario que creaste al iniciar Keycloak
+        password: adminpds
