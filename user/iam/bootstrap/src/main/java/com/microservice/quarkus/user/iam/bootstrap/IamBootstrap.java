@@ -38,11 +38,6 @@ public class IamBootstrap {
   void onStart(@Observes @Priority(10) StartupEvent ev) {
     System.out.println(">> (10) Iniciando IAM Bootstrap...");
 
-    if (!waitForKeycloak()) {
-      System.err.println("IAM Bootstrap: Could not connect to Keycloak after " + MAX_RETRIES + " attempts");
-      return;
-    }
-
     try {
       initializeKeycloak();
     } catch (Exception e) {
