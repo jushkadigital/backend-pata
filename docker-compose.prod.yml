@@ -5,7 +5,7 @@ services:
   # 1. TU APLICACIÓN QUARKUS
   # ----------------------------------------------------------------
   app:
-    image: urgosxd7/mi-app-prod:v1
+    image: urgosxd7/mi-app-prod:v2
     container_name: quarkus-app-prod
     restart: always
     env_file:
