@@ -10,10 +10,10 @@ quarkus:
 
   keycloak:
     devservices:
-      enabled: false
+      enabled: true
       follow-container-logs: true
     admin-client:
-      server-url: http://localhost:8080  # Esto funciona en tu máquina
+      server-url: http://localhost:8080
 
   log:
     category:

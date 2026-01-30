@@ -8,20 +8,7 @@ quarkus:
     
     default-schema: quarkus   
     schema-management:
-        strategy: validate
-
-"%dev":
-  quarkus:
-    flyway:
-      baseline-on-migrate: true
-      migrate-at-start: true
-      create-schemas: true
-      clean-at-start: false
-      schemas: quarkus
-
-quarkus:
-  datasource:
-    db-kind: postgresql
+        strategy: validate 
 
 # ===================================================================
 # 🛠️ ENTORNO DE DESARROLLO (mvn quarkus:dev)
@@ -30,8 +17,10 @@ quarkus:
   quarkus:
     datasource:
       db-kind: postgresql
-   
+      devservices:
+        enabled: true
 
+ 
     hibernate-orm:
       # Hibernate NO toca DDL, solo valida que tus scripts estén bien
       database:

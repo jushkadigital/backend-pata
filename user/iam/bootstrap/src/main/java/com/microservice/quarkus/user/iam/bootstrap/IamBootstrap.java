@@ -13,6 +13,7 @@ import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 @ApplicationScoped
 public class IamBootstrap {
@@ -35,10 +36,26 @@ public class IamBootstrap {
   @Inject
   UserService userService;
 
+  @ConfigProperty(name = "quarkus.profile", defaultValue = "prod")
+  String profile;
+
   void onStart(@Observes @Priority(10) StartupEvent ev) {
     System.out.println(">> (10) Iniciando IAM Bootstrap...");
+    System.out.println(">> (10) Profile: " + profile);
 
     try {
+      if ("dev".equals(profile)) {
+        System.out.println(">> (10) Dev mode detected, waiting for Keycloak connection...");
+        if (!waitForKeycloak()) {
+
+          System.err.println("IAM Bootstrap: Failed to connect to Keycloak after retries");
+          return;
+        }
+      }else{
+        
+        clientService.getRealm();
+      }
+
       initializeKeycloak();
     } catch (Exception e) {
       System.err.println("IAM Bootstrap: Error during initialization: " + e.getMessage());
@@ -70,17 +87,19 @@ public class IamBootstrap {
 
   private void initializeKeycloak() {
     System.out.println("IAM Bootstrap: Realm created/verified");
-    clientService.getRealm();
-    //clientService.configurarWebhook("http://172.17.0.1:8081/webhooks/keycloak");
-    clientService.configurarWebhook("http://quarkus-app-prod:8081/webhooks/keycloak");
-    //clientService.getToken("http://172.17.0.1:8081/webhooks/keycloak");
-    clientService.getToken("http://quarkus-app-prod:8081/webhooks/keycloak");
+    
+    String webhookUrl = "dev".equals(profile) 
+        ? "http://172.17.0.1:8081/webhooks/keycloak" 
+        : "http://quarkus-app-prod:8081/webhooks/keycloak";
+    
+    clientService.configurarWebhook(webhookUrl);
+    clientService.getToken(webhookUrl);
 
-    List<String> dashboardRedirects = List.of("http://localhost:3000/*", "http://localhost:9000/*");
+    List<String> dashboardRedirects = List.of("http://localhost:3000/*", "http://localhost:9000/*","https://cms.patarutera.pe/*","https://commerce.patarutera.pe/*","https://www.cms.patarutera.pe/*","https://www.commerce.patarutera.pe/*");
     String clientId = clientService.createClient("dashboard-client", dashboardRedirects);
     System.out.println("IAM Bootstrap: Client created with ID: " + clientId);
 
-    List<String> frontRedirects = List.of("http://localhost:4000/*","http://localhost:9000/*");
+    List<String> frontRedirects = List.of("http://localhost:4000/*","http://localhost:9000/*","https://www.patarutera.pe/","https://patarutera.pe/*","https://patarutera-o3it-git-login-josues-projects-cd2f3b7d.vercel.app/*","https://www.patarutera-o3it-git-login-josues-projects-cd2f3b7d.vercel.app/*");
     String clientId2 = clientService.createClient("frontend-client", frontRedirects);
     System.out.println("IAM Bootstrap: Client created with ID: " + clientId2);
 

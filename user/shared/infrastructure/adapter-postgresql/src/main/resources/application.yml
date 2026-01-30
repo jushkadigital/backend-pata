@@ -1,0 +1,51 @@
+quarkus:
+  datasource:
+    db-kind: postgresql
+  
+  hibernate-orm:
+    default-schema: quarkus   
+    schema-management:
+        strategy: validate 
+
+"%dev":
+  quarkus:
+    datasource:
+      db-kind: postgresql
+      devservices:
+        enabled: true
+
+    hibernate-orm:
+      database:
+        generation: none
+      schema-management:
+        strategy: validate
+      default-schema: quarkus
+
+    flyway:
+      clean-at-start: true
+      migrate-at-start: true
+      create-schemas: true
+      schemas: quarkus
+      baseline-on-migrate: true
+
+"%prod":
+  quarkus:
+    datasource:
+      username: ${DB_USER}
+      password: ${DB_PASSWORD}
+      jdbc:
+        url: ${DB_URL}
+
+    hibernate-orm:
+      database:
+        generation: none
+      schema-management:
+        strategy: validate
+      default-schema: quarkus
+
+    flyway:
+      clean-at-start: false
+      migrate-at-start: true
+      validate-on-migrate: true
+      schemas: quarkus
+      baseline-on-migrate: true
