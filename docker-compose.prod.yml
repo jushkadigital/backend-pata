@@ -24,6 +24,10 @@ services:
       KEYCLOAK_ADMIN_USER: adminpds
       KEYCLOAK_ADMIN_PASSWORD: adminpds
       QUARKUS_OIDC_TOKEN_ISSUER: any
+    cpus: 1.0
+    mem_limit: 1024m
+    mem_reservation: 512m
+    pids_limit: 300
 
 
 
@@ -49,6 +53,10 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - prod-network
+    cpus: 0.75
+    mem_limit: 768m
+    mem_reservation: 384m
+    pids_limit: 200
 
     
 volumes:
