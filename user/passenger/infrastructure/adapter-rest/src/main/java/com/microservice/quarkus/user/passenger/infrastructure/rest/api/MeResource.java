@@ -2,11 +2,10 @@ package com.microservice.quarkus.user.passenger.infrastructure.rest.api;
 
 import org.eclipse.microprofile.jwt.JsonWebToken;
 
+import com.microservice.quarkus.user.passenger.application.api.PassengerRepository;
 import com.microservice.quarkus.user.passenger.application.dto.CompletePassengerCommand;
-import com.microservice.quarkus.user.passenger.application.service.PassengerRepositoryImpl;
 import com.microservice.quarkus.user.passenger.application.service.PassengerService;
-import com.microservice.quarkus.user.passenger.domain.entities.Passenger;
-import com.microservice.quarkus.user.passenger.infrastructure.rest.api.MeAPI;
+import com.microservice.quarkus.user.passenger.domain.Passenger;
 import com.microservice.quarkus.user.passenger.infrastructure.rest.dto.CompleteRequestDTO;
 import com.microservice.quarkus.user.passenger.infrastructure.rest.mapper.PassengerDTOMapper;
 
@@ -18,7 +17,7 @@ import jakarta.inject.Inject;
 @ApplicationScoped
 public class MeResource implements MeAPI {
   @Inject
-  PassengerRepositoryImpl userRepository;
+  PassengerRepository repository;
   @Inject
   PassengerService passengerService;
   @Inject
@@ -35,14 +34,8 @@ public class MeResource implements MeAPI {
     response = Response.noContent().build();
 
     User user = new User(securityIdentity, jsonWebToken);
-    System.out.println(user.userName);
-    System.out.println(user.id);
 
-    Passenger passenger = userRepository.findByExternalId(user.id);
-
-    System.out.println("AQUI ME ENDPOINT");
-
-    System.out.println(passenger);
+    Passenger passenger = repository.findByExternalId(user.id).orElse(null);
 
     if (null == passenger) {
       response = Response.status(Response.Status.NOT_FOUND).build();
@@ -56,12 +49,8 @@ public class MeResource implements MeAPI {
   @Override
   public Response completePassengerProfile(CompleteRequestDTO completeRequestDTO) {
     User user = new User(securityIdentity, jsonWebToken);
-    System.out.println(user.userName);
-    System.out.println(user.id);
 
-    Passenger passenger = userRepository.findByExternalId(user.id);
-
-    System.out.println("ENTRO ENDPOINT COMPLETE");
+    Passenger passenger = repository.findByExternalId(user.id).orElse(null);
 
     if (null == passenger) {
       return Response.status(Response.Status.NOT_FOUND).build();

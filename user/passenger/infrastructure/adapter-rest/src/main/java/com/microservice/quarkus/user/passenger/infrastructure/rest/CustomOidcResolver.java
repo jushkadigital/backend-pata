@@ -16,7 +16,7 @@ import java.util.Optional;
 @ApplicationScoped
 public class CustomOidcResolver implements TenantConfigResolver {
 
-  private static final String EVENT_GET_TENANT_CONFIG = "iam.get-client-config";
+  private static final String EVENT_GET_TENANT_CONFIG = "identity.get-client-config";
   private static final String DEFAULT_CLIENT = "dashboard-client";
 
   private static final String[] PUBLIC_PATHS = {
@@ -38,16 +38,16 @@ public class CustomOidcResolver implements TenantConfigResolver {
       }
     }
 
-    // Request tenant config from IAM module via EventBus
+    // Request tenant config from Identity module via EventBus
     return eventBus.<JsonObject>request(EVENT_GET_TENANT_CONFIG, DEFAULT_CLIENT)
         .onItem().transform(Message::body)
         .onItem().transform(json -> {
           if (json == null) {
-            System.out.println("CustomOidcResolver: No tenant config received from IAM");
+            System.out.println("CustomOidcResolver: No tenant config received from Identity");
             return null;
           }
 
-          System.out.println("CustomOidcResolver: Received config from IAM: " + json.encode());
+          System.out.println("CustomOidcResolver: Received config from Identity: " + json.encode());
 
           OidcTenantConfig config = new OidcTenantConfig();
           config.tenantId = Optional.of(DEFAULT_CLIENT);

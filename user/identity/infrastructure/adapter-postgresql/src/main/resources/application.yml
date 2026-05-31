@@ -1,0 +1,67 @@
+quarkus:
+  # configure your datasource
+  datasource:
+    db-kind: postgresql
+
+  hibernate-orm:
+    database:
+      default-schema: quarkus
+    schema-management:
+      strategy: validate
+
+# ===================================================================
+# ENTORNO DE DESARROLLO (mvn quarkus:dev)
+# ===================================================================
+"%dev":
+  quarkus:
+    datasource:
+      db-kind: postgresql
+      devservices:
+        enabled: true
+
+    hibernate-orm:
+      # Hibernate NO toca DDL, solo valida que tus scripts estén bien
+      database:
+        generation: none
+        default-schema: quarkus
+      schema-management:
+        strategy: validate
+
+    flyway:
+      # MODO NUCLEAR: Borra DB al iniciar (lo que pediste)
+      clean-at-start: true
+      migrate-at-start: true
+      create-schemas: true
+      schemas: quarkus
+      # Útil si desactivas clean-at-start temporalmente
+      baseline-on-migrate: true
+
+# ===================================================================
+# ENTORNO DE PRODUCCIÓN (Docker build / java -jar)
+# ===================================================================
+"%prod":
+  quarkus:
+    datasource:
+      # Inyectadas por variables de entorno (Docker/K8s)
+      username: ${DB_USER}
+      password: ${DB_PASSWORD}
+      jdbc:
+        url: ${DB_URL}
+
+    hibernate-orm:
+      database:
+        generation: none
+        default-schema: quarkus
+      # Falla al iniciar si el código Java no coincide con la DB real
+      schema-management:
+        strategy: validate
+
+    flyway:
+      # SEGURIDAD TOTAL: Nunca borrar datos en prod
+      clean-at-start: false
+      # Ejecuta migraciones pendientes (V__...) al arrancar el contenedor
+      migrate-at-start: true
+      # Verifica que nadie haya modificado scripts viejos (checksum)
+      validate-on-migrate: true
+      schemas: quarkus
+      baseline-on-migrate: true

@@ -6,29 +6,27 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
 import com.microservice.quarkus.user.passenger.application.dto.CompletePassengerCommand;
-import com.microservice.quarkus.user.passenger.domain.entities.EmailAddress;
-import com.microservice.quarkus.user.passenger.domain.entities.Passenger;
-import com.microservice.quarkus.user.passenger.domain.entities.PassengerId;
-import com.microservice.quarkus.user.passenger.domain.entities.PassengerStatus;
+import com.microservice.quarkus.user.passenger.domain.Passenger;
+import com.microservice.quarkus.user.passenger.domain.PassengerStatus;
 import com.microservice.quarkus.user.passenger.infrastructure.rest.dto.CompleteRequestDTO;
 import com.microservice.quarkus.user.passenger.infrastructure.rest.dto.MeDTO;
 
-@Mapper(componentModel = "cdi") // Importante para inyección en Quarkus
+@Mapper(componentModel = "cdi")
 public interface PassengerDTOMapper {
 
-  // Mapea el UserRepresentation (Keycloak) al objeto User (Dominio)
-  default String mapToString(EmailAddress value) {
-    return value.value(); // ⬅️ Extrae el String del Record
-  }
-
-  default UUID mapToString(PassengerId value) {
-    return value != null ? UUID.fromString(value.value()) : null;
-  }
-
-  @Mapping(target = "id", source = "id")
-  @Mapping(target = "email", source = "email")
+  @Mapping(target = "id", expression = "java(mapId(passenger))")
+  @Mapping(target = "email", expression = "java(mapEmail(passenger))")
+  @Mapping(target = "externalId", source = "externalId")
   @Mapping(target = "onboardingCompleted", expression = "java(checkCompletion(passenger))")
   MeDTO toDto(Passenger passenger);
+
+  default UUID mapId(Passenger passenger) {
+    return passenger.getId() != null ? UUID.fromString(passenger.getId().value()) : null;
+  }
+
+  default String mapEmail(Passenger passenger) {
+    return passenger.getEmail() != null ? passenger.getEmail().value() : null;
+  }
 
   default boolean checkCompletion(Passenger passenger) {
     return passenger.getStatus() == PassengerStatus.ACTIVE;

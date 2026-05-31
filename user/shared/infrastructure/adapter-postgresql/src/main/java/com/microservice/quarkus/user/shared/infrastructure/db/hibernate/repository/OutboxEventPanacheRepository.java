@@ -13,11 +13,11 @@ import java.util.UUID;
 public class OutboxEventPanacheRepository implements PanacheRepositoryBase<OutboxEventEntity, UUID> {
 
   public List<OutboxEventEntity> findUnpublished() {
-    return list("published = false ORDER BY occurredOn ASC");
+    return list("published = false AND dead = false ORDER BY occurredOn ASC");
   }
 
-  public List<OutboxEventEntity> findUnpublishedBySubdomain(String subdomain) {
-    return list("subdomain = ?1 AND published = false ORDER BY occurredOn ASC", subdomain);
+  public List<OutboxEventEntity> findDeadEvents() {
+    return list("dead = true ORDER BY deadAt ASC");
   }
 
   public long deletePublishedBefore(Instant threshold) {

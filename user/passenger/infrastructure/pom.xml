@@ -11,7 +11,7 @@
 
     <artifactId>passengerinfrastructure</artifactId>
     <packaging>pom</packaging>
-    <name>admininfrastructure</name>
+    <name>passengerinfrastructure</name>
     <description>Infrastructure Adpaters implementation</description>     
       <build>
         <plugins>

@@ -1,0 +1,3 @@
+ALTER TABLE quarkus.users ADD COLUMN retry_count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE quarkus.users ADD COLUMN max_retries INTEGER NOT NULL DEFAULT 5;
+ALTER TABLE quarkus.users ADD COLUMN next_retry_at TIMESTAMP;

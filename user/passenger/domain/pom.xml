@@ -1,4 +1,3 @@
-
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
@@ -13,70 +12,44 @@
 
     <artifactId>passengerdomain</artifactId>
     <name>passengerdomain</name>
-    <description>passengerdomain</description>
+    <description>Passenger domain model (hexagonal — pure POJO, no framework deps)</description>
 
     <dependencies>
-
         <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-smallrye-openapi</artifactId>
+            <groupId>com.microservice.quarkus</groupId>
+            <artifactId>shareddomain</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
         </dependency>
-
-        
-        <!-- Config YAML -->
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-config-yaml</artifactId>
-            <scope>test</scope>
-        </dependency>
-
 
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <scope>provided</scope>
         </dependency>
+
+        <!-- Test -->
         <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-            <scope>provided</scope>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
         </dependency>
-      <!-- REST controllers con JSON -->
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-rest-jackson</artifactId>
-        </dependency>
-      <dependency>
-      <groupId>io.quarkiverse.vault</groupId>
-      <artifactId>quarkus-vault</artifactId>
-    </dependency>
-      
-      
     </dependencies>
 
     <build>
-     <resources>
-            <resource>
-                <directory>src/main/resources</directory>
-            </resource>
-            <resource>
-                <directory>config</directory>
-            </resource>
-        </resources>
         <plugins>
-      <plugin>
-      <groupId>io.smallrye</groupId>
-      <artifactId>jandex-maven-plugin</artifactId>
-      <version>3.4.0</version>
-      <executions>
-        <execution>
-          <id>make-index</id>
-          <goals>
-            <goal>jandex</goal>
-          </goals>
-        </execution>
-      </executions>
-    </plugin>
+            <plugin>
+                <groupId>io.smallrye</groupId>
+                <artifactId>jandex-maven-plugin</artifactId>
+                <version>3.4.0</version>
+                <executions>
+                    <execution>
+                        <id>make-index</id>
+                        <goals>
+                            <goal>jandex</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 

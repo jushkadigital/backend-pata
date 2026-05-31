@@ -9,7 +9,7 @@ import jakarta.enterprise.event.Observes;
 
 @ApplicationScoped
 public class PassengerBootstrap {
-  void onStart(@Observes @Priority(20) StartupEvent ev) {
+  public void onStart(@Observes @Priority(20) StartupEvent ev) {
     System.out.println("INICIANDO PASSENGUER MODULEEE");
     // Tu lógica de inicialización aquí
   }

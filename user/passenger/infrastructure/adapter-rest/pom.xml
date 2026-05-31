@@ -20,10 +20,15 @@
             <artifactId>passengerapplication</artifactId>
             <version>0.0.1-SNAPSHOT</version>
         </dependency>
+        <dependency>
+            <groupId>com.microservice.quarkus</groupId>
+            <artifactId>passengerdomain</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
+        </dependency>
 
       <dependency>
             <groupId>com.microservice.quarkus</groupId>
-            <artifactId>iamapplication</artifactId>
+            <artifactId>identityapplication</artifactId>
             <version>0.0.1-SNAPSHOT</version>
         </dependency>
       <dependency>
@@ -62,7 +67,7 @@
         <!-- Testing -->
         <dependency>
             <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-junit5-mockito</artifactId>
+            <artifactId>quarkus-junit-mockito</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>

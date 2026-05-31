@@ -1,0 +1,452 @@
+# Production observability stack
+# Usage: docker compose -f docker-compose.observability.prod.yml up -d
+#
+# Differences from dev:
+# - Latest stable tool versions (Tempo 2.6.1, Loki 3.3.2, Prometheus 3.1.0, Grafana 11.4.0)
+# - No debug exporters (production traffic volume)
+# - No anonymous Grafana access
+# - Higher memory limits (512M-1G)
+# - Longer retention (30d metrics, 30d logs)
+# - Only essential ports exposed externally
+# - restart: always
+# - Loki 3.x with TSDB + structured metadata
+# - Tempo 2.6.x with span metrics generation
+# - Prometheus 3.x with native histograms
+
+services:
+
+  config-init:
+    image: alpine:3.20
+    container_name: config-init
+    volumes:
+      - config-data:/etc/observability
+    entrypoint: [ "sh", "-c" ]
+    command:
+      - |
+        cat > /etc/observability/tempo.yml << 'EOF'
+        server:
+          http_listen_port: 3200
+
+        distributor:
+          receivers:
+            otlp:
+              protocols:
+                grpc:
+                  endpoint: 0.0.0.0:4317
+
+        ingester:
+          trace_idle_period: 10s
+          max_block_bytes: 5_242_880
+          max_block_duration: 10m
+
+        compactor:
+          compaction:
+            compaction_window: 30m
+            max_compaction_objects: 5000000
+            block_retention: 720h
+
+        metrics_generator:
+          registry:
+            external_labels:
+              source: tempo
+              environment: production
+          storage:
+            path: /var/tempo/generator/wal
+          metrics_ingestion_time_range_slack: 5m
+
+        storage:
+          trace:
+            backend: local
+            local:
+              path: /var/tempo/traces
+            wal:
+              path: /var/tempo/wal
+        EOF
+
+        cat > /etc/observability/prometheus.yml << 'EOF'
+        global:
+          scrape_interval: 30s
+          evaluation_interval: 30s
+
+        scrape_configs:
+          - job_name: 'quarkus-app'
+            metrics_path: '/q/metrics'
+            scrape_interval: 15s
+            static_configs:
+              - targets: ['host.docker.internal:8081']
+                labels:
+                  app: 'quarkus-user-bc'
+                  environment: 'production'
+
+          - job_name: 'tempo'
+            static_configs:
+              - targets: ['tempo:3200']
+
+          - job_name: 'otel-collector'
+            static_configs:
+              - targets: ['otel-collector:8889']
+        EOF
+
+        cat > /etc/observability/loki.yaml << 'EOF'
+        auth_enabled: false
+
+        server:
+          http_listen_port: 3100
+          log_level: info
+          grpc_server_max_recv_msg_size: 16777216
+          grpc_server_max_send_msg_size: 16777216
+
+        common:
+          path_prefix: /loki
+          storage:
+            filesystem:
+              chunks_directory: /loki/chunks
+              rules_directory: /loki/rules
+          replication_factor: 1
+          ring:
+            kvstore:
+              store: inmemory
+
+        schema_config:
+          configs:
+            - from: 2024-01-01
+              store: tsdb
+              object_store: filesystem
+              schema: v13
+              index:
+                prefix: index_
+                period: 24h
+
+        storage_config:
+          filesystem:
+            directory: /loki/storage
+          tsdb_shipper:
+            active_index_directory: /loki/index
+            cache_location: /loki/tsdb-cache
+
+        limits_config:
+          allow_structured_metadata: true
+          max_query_length: 721h
+          retention_period: 720h
+          max_entries_limit_per_query: 5000
+          max_query_series: 1000
+          cardinality_limit: 100000
+
+        compactor:
+          working_directory: /loki/compactor
+          retention_enabled: true
+          delete_request_store: filesystem
+          compaction_interval: 10m
+
+        analytics:
+          reporting_enabled: false
+        EOF
+
+        cat > /etc/observability/otel-collector.yml << 'EOF'
+        receivers:
+          otlp:
+            protocols:
+              grpc:
+                endpoint: 0.0.0.0:4317
+                max_recv_msg_size_mib: 16
+              http:
+                endpoint: 0.0.0.0:4318
+
+        processors:
+          memory_limiter:
+            check_interval: 1s
+            limit_mib: 512
+            spike_limit_mib: 128
+          batch:
+            timeout: 10s
+            send_batch_size: 8192
+            send_batch_max_size: 16384
+          resource:
+            attributes:
+              - key: collector.source
+                value: otel-collector
+                action: upsert
+              - key: deployment.environment
+                value: production
+                action: upsert
+          filter/health:
+            error_mode: ignore
+            traces:
+              span:
+                - 'attributes["http.route"] == "/health"'
+                - 'attributes["http.route"] == "/ready"'
+                - 'attributes["http.route"] == "/live"'
+            logs:
+              log_record:
+                - 'attributes["http.route"] == "/health"'
+
+        exporters:
+          otlp/traces:
+            endpoint: tempo:4317
+            tls:
+              insecure: true
+            retry_on_failure:
+              enabled: true
+              initial_interval: 5s
+              max_interval: 30s
+              max_elapsed_time: 300s
+          prometheusremotewrite:
+            endpoint: http://prometheus:9090/api/v1/write
+            tls:
+              insecure: true
+            retry_on_failure:
+              enabled: true
+              initial_interval: 5s
+              max_interval: 30s
+              max_elapsed_time: 300s
+          otlphttp/logs:
+            endpoint: http://loki:3100/otlp
+            tls:
+              insecure: true
+            retry_on_failure:
+              enabled: true
+              initial_interval: 5s
+              max_interval: 30s
+              max_elapsed_time: 300s
+
+        service:
+          pipelines:
+            traces:
+              receivers: [otlp]
+              processors: [memory_limiter, filter/health, batch]
+              exporters: [otlp/traces]
+            metrics:
+              receivers: [otlp]
+              processors: [memory_limiter, resource, batch]
+              exporters: [prometheusremotewrite]
+            logs:
+              receivers: [otlp]
+              processors: [memory_limiter, resource, filter/health, batch]
+              exporters: [otlphttp/logs]
+        EOF
+
+        cat > /etc/observability/grafana-datasources.yml << 'EOF'
+        apiVersion: 1
+        datasources:
+          - name: Tempo
+            type: tempo
+            url: http://tempo:3200
+            access: proxy
+            uid: tempo
+            isDefault: false
+            editable: false
+            jsonData:
+              tracesToMetrics:
+                datasourceUid: prometheus
+                tags:
+                  - key: service.name
+                    value: user-bounded-context
+              tracesToLogs:
+                datasourceUid: loki
+                tags: ['traceId', 'spanId']
+                lokiSearch: true
+                filterByTraceID: true
+                filterBySpanID: true
+          - name: Loki
+            type: loki
+            url: http://loki:3100
+            access: proxy
+            uid: loki
+            isDefault: false
+            editable: false
+            jsonData:
+              derivedFields:
+                - datasourceUid: tempo
+                  matcherRegex: '"traceId":"(\\w+)"'
+                  url: '$${__value.raw}'
+          - name: Prometheus
+            type: prometheus
+            url: http://prometheus:9090
+            access: proxy
+            uid: prometheus
+            isDefault: true
+            editable: false
+            jsonData:
+              exemplarTraceIdDestinations:
+                - name: traceID
+                  datasourceUid: tempo
+        EOF
+
+        cat > /etc/observability/grafana-dashboards.yml << 'EOF'
+        apiVersion: 1
+        providers:
+          - name: 'default'
+            orgId: 1
+            folder: ''
+            type: file
+            disableDeletion: false
+            editable: false
+            options:
+              path: /var/lib/grafana/dashboards
+              foldersFromFilesStructure: false
+        EOF
+
+        echo 'All production configs written successfully'
+
+  tempo:
+    image: grafana/tempo:2.6.1
+    container_name: tempo
+    command: [ "-config.file=/etc/observability/tempo.yml" ]
+    ports:
+      - "3200"
+      - "4317"
+    volumes:
+      - config-data:/etc/observability:ro
+      - tempo-data:/var/tempo
+    healthcheck:
+      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:3200/ready" ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: always
+    networks:
+      - observability-net
+    depends_on:
+      config-init:
+        condition: service_completed_successfully
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    container_name: prometheus
+    command:
+      - "--config.file=/etc/observability/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=30d"
+      - "--storage.tsdb.retention.size=10GB"
+      - "--web.enable-remote-write-receiver"
+      - "--web.enable-admin-api"
+    ports:
+      - "9090"
+    volumes:
+      - config-data:/etc/observability:ro
+      - prometheus-data:/prometheus
+    healthcheck:
+      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy" ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: always
+    networks:
+      - observability-net
+    depends_on:
+      config-init:
+        condition: service_completed_successfully
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  loki:
+    image: grafana/loki:3.3.2
+    container_name: loki
+    command: [ "-config.file=/etc/observability/loki.yaml" ]
+    ports:
+      - "3100"
+    volumes:
+      - config-data:/etc/observability:ro
+      - loki-data:/loki
+    healthcheck:
+      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:3100/ready" ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: always
+    networks:
+      - observability-net
+    depends_on:
+      config-init:
+        condition: service_completed_successfully
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.119.0
+    container_name: otel-collector
+    command: [ "--config=/etc/observability/otel-collector.yml" ]
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+      - "8889"
+    volumes:
+      - config-data:/etc/observability:ro
+    depends_on:
+      tempo:
+        condition: service_healthy
+      prometheus:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
+    restart: always
+    networks:
+      - observability-net
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-changeme}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_SECURITY_DISABLE_INITIAL_ADMIN_CREATION: "true"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/quarkus-overview.json
+      GF_SERVER_ROOT_URL: "${GRAFANA_ROOT_URL:-http://localhost:3000}"
+      GF_LOG_MODE: "console file"
+      GF_LOG_LEVEL: "warn"
+    volumes:
+      - config-data:/etc/observability:ro
+      - grafana-data:/var/lib/grafana
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    entrypoint: >
+      sh -c "
+        mkdir -p /etc/grafana/provisioning/datasources /etc/grafana/provisioning/dashboards &&
+        cp /etc/observability/grafana-datasources.yml /etc/grafana/provisioning/datasources/datasources.yml &&
+        cp /etc/observability/grafana-dashboards.yml /etc/grafana/provisioning/dashboards/dashboards.yml &&
+        /run.sh
+      "
+    depends_on:
+      tempo:
+        condition: service_healthy
+      prometheus:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
+    restart: always
+    networks:
+      - observability-net
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+volumes:
+  config-data:
+  tempo-data:
+  prometheus-data:
+  loki-data:
+  grafana-data:
+
+networks:
+  observability-net:
+    name: observability-net
+    driver: bridge

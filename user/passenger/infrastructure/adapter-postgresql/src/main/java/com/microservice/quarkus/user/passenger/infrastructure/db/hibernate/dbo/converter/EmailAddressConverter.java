@@ -1,6 +1,6 @@
 package com.microservice.quarkus.user.passenger.infrastructure.db.hibernate.dbo.converter;
 
-import com.microservice.quarkus.user.passenger.domain.entities.EmailAddress;
+import com.microservice.quarkus.user.shared.domain.EmailAddress;
 
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;

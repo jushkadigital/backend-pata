@@ -21,6 +21,11 @@
             <artifactId>shareddomain</artifactId>
             <version>0.0.1-SNAPSHOT</version>
         </dependency>
+        <dependency>
+            <groupId>com.microservice.quarkus</groupId>
+            <artifactId>sharedapplication</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
+        </dependency>
 
         <dependency>
             <groupId>io.quarkus</groupId>

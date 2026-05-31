@@ -12,7 +12,7 @@ mp:
         # Configuración del Exchange
         exchange:
           name: tourism-exchange # El nombre del "buzón" en RabbitMQ
-          type: topic            # 'topic' permite usar routing keys como "iam.user.created"
+          type: topic            # 'topic' permite usar routing keys como "identity.user.created"
           durable: true
         # Clave por defecto (la sobreescribiremos en el código, pero es obligatoria)
         default-routing-key: "#"

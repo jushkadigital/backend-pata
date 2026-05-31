@@ -18,7 +18,7 @@
   <dependencies>
     <dependency>
       <groupId>com.microservice.quarkus</groupId>
-      <artifactId>iambootstrap</artifactId>
+      <artifactId>identitybootstrap</artifactId>
       <version>0.0.1-SNAPSHOT</version>
     </dependency>
     <dependency>
@@ -42,13 +42,8 @@
       <version>0.0.1-SNAPSHOT</version>
     </dependency>
 
-    <!-- Catalog Tours -->
-    
-    <!-- Payment -->
-   
-    <!-- Catalog Shared -->
-    
-        <!-- YAML config -->
+
+    <!-- YAML config -->
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-config-yaml</artifactId>
@@ -59,17 +54,62 @@
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-micrometer-registry-prometheus</artifactId>
     </dependency>
+    <dependency>
+      <groupId>io.quarkiverse.micrometer.registry</groupId>
+      <artifactId>quarkus-micrometer-registry-otlp</artifactId>
+      <version>3.5.0</version>
+    </dependency>
+
+    <!-- OpenTelemetry -->
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-opentelemetry</artifactId>
+    </dependency>
+
+    <!-- Micrometer for custom business metrics -->
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-micrometer</artifactId>
+    </dependency>
+
+    <!-- JSON logging for Loki compatibility -->
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-logging-json</artifactId>
+    </dependency>
 
     <!-- Application core -->
-    <!--     <dependency>
-      <groupId>com.microservice.quarkus</groupId>
-      <artifactId>catalogoapplication</artifactId>
-      <version>0.0.1-SNAPSHOT</version>
-    </dependency>  -->
 
     <dependency>
       <groupId>io.quarkiverse.vault</groupId>
       <artifactId>quarkus-vault</artifactId>
+    </dependency>
+
+    <!-- Test dependencies -->
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-junit5</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-junit-mockito</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.rest-assured</groupId>
+      <artifactId>rest-assured</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.awaitility</groupId>
+      <artifactId>awaitility</artifactId>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 

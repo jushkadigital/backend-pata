@@ -1,26 +1,18 @@
 package com.microservice.quarkus.user.passenger.infrastructure.db.hibernate.dbo;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
+import com.microservice.quarkus.user.passenger.domain.PassengerStatus;
+import com.microservice.quarkus.user.passenger.domain.PassengerType;
 import com.microservice.quarkus.user.passenger.infrastructure.db.hibernate.dbo.converter.EmailAddressConverter;
-import com.microservice.quarkus.user.passenger.domain.entities.PassengerType;
-import com.microservice.quarkus.user.passenger.domain.entities.EmailAddress;
-import com.microservice.quarkus.user.passenger.domain.entities.PassengerStatus;
-import com.microservice.quarkus.user.passenger.infrastructure.db.hibernate.dbo.converter.PassengerIdConverter;
+import com.microservice.quarkus.user.shared.domain.EmailAddress;
 
-import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
-import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;

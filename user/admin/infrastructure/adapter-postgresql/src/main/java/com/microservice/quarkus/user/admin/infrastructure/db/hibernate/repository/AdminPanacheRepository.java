@@ -8,4 +8,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 @ApplicationScoped
 public class AdminPanacheRepository implements PanacheRepositoryBase<AdminEntity, String> {
 
+    public void deleteByExternalId(String externalId) {
+        delete("externalId", externalId);
+    }
 }

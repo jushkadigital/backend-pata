@@ -15,18 +15,23 @@
     <description>Hibernate Postgresql Adapter implementation</description>
 
     <dependencies>
-        <!-- Dependencia hacia application layer -->
+        <dependency>
+            <groupId>com.microservice.quarkus</groupId>
+            <artifactId>shareddomain</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
+        </dependency>
+        <!-- Application layer — to implement PassengerRepository port -->
         <dependency>
             <groupId>com.microservice.quarkus</groupId>
             <artifactId>passengerapplication</artifactId>
             <version>0.0.1-SNAPSHOT</version>
         </dependency>
+        <!-- Domain model — for PassengerEntityMapper -->
         <dependency>
             <groupId>com.microservice.quarkus</groupId>
             <artifactId>passengerdomain</artifactId>
             <version>0.0.1-SNAPSHOT</version>
         </dependency>
-
         <!-- Flyway -->
         <dependency>
             <groupId>io.quarkus</groupId>
@@ -60,14 +65,14 @@
         <!-- JUnit 5 -->
         <dependency>
             <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-junit5</artifactId>
+            <artifactId>quarkus-junit</artifactId>
             <scope>test</scope>
         </dependency>
 
         <!-- Mockito testing -->
         <dependency>
             <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-junit5-mockito</artifactId>
+            <artifactId>quarkus-junit-mockito</artifactId>
             <scope>test</scope>
         </dependency>
 

@@ -1,0 +1,10 @@
+webhook:
+    payload:
+        secret: ${WEBHOOK_PAYLOAD_SECRET:my-secure-webhook-secret}
+
+'%prod':
+    keycloak:
+        url: ${KEYCLOAK_INTERNAL_URL:http://localhost:8080}
+    quarkus:
+        oidc:
+            auth-server-url: ${keycloak.url}/realms/quarkus

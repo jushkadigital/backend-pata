@@ -1,0 +1,82 @@
+quarkus:
+  http:
+    port: 8082
+
+  scheduler:
+    enabled: false
+
+  datasource:
+    db-kind: postgresql
+    devservices:
+      enabled: true
+      port: 0
+      shared: true
+      service-name: postgres-user-bc
+
+  hibernate-orm:
+    database:
+      generation: none
+    dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  flyway:
+    migrate-at-start: true
+    init-sql: "CREATE SCHEMA IF NOT EXISTS quarkus"
+
+  oidc:
+    tenant-enabled: false
+    discovery-enabled: false
+    auth-server-url: ${keycloak.url:replaced-by-test-resource}/realms/quarkus/
+
+  keycloak:
+    devservices:
+      enabled: true
+      realm-name: quarkus
+      startup-timeout: 120
+      shared: true
+      service-name: keycloak-user-bc
+    admin-client:
+      server-url: http://localhost:${keycloak.url:8080}
+
+  vault:
+    devservices:
+      enabled: true
+      shared: true
+      service-name: vault-user-bc
+      init-commands: 'kv put secret/config password="testpass"'
+
+  rabbitmq-devservices:
+    enabled: false
+
+  devservices:
+    timeout: 300
+
+  log:
+    level: WARN
+    category:
+      "com.microservice.quarkus":
+        level: INFO
+
+mp:
+  messaging:
+    outgoing:
+      domain-events-out:
+        connector: smallrye-rabbitmq
+        exchange:
+          name: tourism-exchange
+          type: topic
+          durable: true
+        default-routing-key: "#"
+        merge: true
+
+rabbitmq-host: localhost
+rabbitmq-port: 5672
+rabbitmq-username: admin
+rabbitmq-password: admin123
+
+webhook:
+  payload:
+    secret: "test-webhook-secret"
+
+eventbus:
+  external:
+    enabled: false

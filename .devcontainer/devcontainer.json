@@ -1,10 +1,26 @@
 {
   "name": "Java Container APP",
+
   "image": "ubuntu:24.04",
+
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+
+  "remoteUser": "ubuntu",
+
+
+  "updateRemoteUserUID": true,
+
   "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "username": "ubuntu",
+      "userUid": "1000",
+      "userGid": "1000",
+      "installZsh": true,
+      "upgradePackages": false
+    },
     "ghcr.io/devcontainers/features/java:1": {
       "version": "21",
-      "distribution": "tem",
+      "distribution": "temurin",
       "installGradle": true,
       "gradleVersion": "8.12.1",
       "installMaven": true,
@@ -13,17 +29,41 @@
     "ghcr.io/rocker-org/devcontainer-features/apt-packages:1": {
       "packages": "git,wget,curl,ripgrep,python3,g++,xclip"
     },
-    "ghcr.io/s1n7ax/devcontainer-features/neovim:2": {},
-    "ghcr.io/devcontainers-extra/features/claude-code:1": {}
+
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
+
+    "ghcr.io/danzilberdan/devcontainers/opencode:0": {},
+
+    "ghcr.io/s1n7ax/devcontainer-features/neovim:2": {}
   },
-  "postCreateCommand": "set -e && apt-get update && apt-get install -y ca-certificates curl gnupg lsb-release && curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg && echo \"deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable\" > /etc/apt/sources.list.d/docker.list && apt-get update && apt-get install -y docker-ce-cli ",
+
   "mounts": [
-    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind",
+    "source=opencode-data,target=/home/ubuntu/.local/share/opencode,type=volume",
+    "source=opencode-config,target=/home/ubuntu/.config/opencode,type=volume",
+    "source=opencode-cache,target=/home/ubuntu/.cache/opencode,type=volume"
   ],
-  "appPort": [
-    8081
+
+  "postCreateCommand": "set -e && sudo mkdir -p /var/lib/apt/lists/partial && sudo groupadd -f docker && sudo usermod -aG docker ubuntu && sudo chmod 666 /var/run/docker.sock && sudo mkdir -p /home/ubuntu/.local/share/nvim /home/ubuntu/.config/nvim /home/ubuntu/.local/state/nvim /home/ubuntu/.cache/nvim /home/ubuntu/.local/share/opencode /home/ubuntu/.config/opencode /home/ubuntu/.cache/opencode && sudo chown -R ubuntu:ubuntu /home/ubuntu/.local /home/ubuntu/.config /home/ubuntu/.cache",
+
+  "forwardPorts": [
+    8080,
+    8081,
+    5005
   ],
   "runArgs": [
     "--network=host"
-  ]
+  ],
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "redhat.java",
+        "redhat.vscode-quarkus",
+        "vscjava.vscode-java-debug",
+        "vscjava.vscode-java-test",
+        "vmware.vscode-boot-dev-pack"
+      ]
+    }
+  }
 }

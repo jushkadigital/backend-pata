@@ -1,6 +1,6 @@
 package com.microservice.quarkus.user.shared.infrastructure.db.hibernate.mapper;
 
-import com.microservice.quarkus.user.shared.domain.outbox.OutboxEvent;
+import com.microservice.quarkus.user.shared.application.outbox.OutboxEvent;
 import com.microservice.quarkus.user.shared.infrastructure.db.hibernate.dbo.OutboxEventEntity;
 
 import org.mapstruct.Mapper;

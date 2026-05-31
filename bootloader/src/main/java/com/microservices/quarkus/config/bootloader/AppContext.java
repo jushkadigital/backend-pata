@@ -1,6 +1,6 @@
 package com.microservices.quarkus.config.bootloader;
 
-import com.microservice.quarkus.user.iam.bootstrap.IamBootstrap;
+import com.microservice.quarkus.user.identity.bootstrap.IdentityBootstrap;
 
 import io.quarkus.runtime.Startup;
 import jakarta.annotation.PostConstruct;

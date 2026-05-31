@@ -4,8 +4,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import com.microservice.quarkus.user.shared.domain.outbox.OutboxEvent;
-import com.microservice.quarkus.user.shared.domain.outbox.OutboxEventRepository;
+import com.microservice.quarkus.user.shared.application.outbox.OutboxEvent;
+import com.microservice.quarkus.user.shared.application.outbox.OutboxEventRepository;
 import com.microservice.quarkus.user.shared.infrastructure.db.hibernate.dbo.OutboxEventEntity;
 import com.microservice.quarkus.user.shared.infrastructure.db.hibernate.mapper.OutboxEventMapper;
 
@@ -48,8 +48,8 @@ public class OutboxEventDboRepository implements OutboxEventRepository {
   }
 
   @Override
-  public List<OutboxEvent> findUnpublishedBySubdomain(String subdomain) {
-    return repository.findUnpublishedBySubdomain(subdomain).stream()
+  public List<OutboxEvent> findDeadEvents() {
+    return repository.findDeadEvents().stream()
         .map(mapper::toDomain)
         .collect(Collectors.toList());
   }

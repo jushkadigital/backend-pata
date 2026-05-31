@@ -1,0 +1,17 @@
+quarkus:
+  keycloak:
+    admin-client:
+      server-url: http://localhost:${keycloak.url:8080}
+
+  log:
+    level: ERROR
+
+"%prod":
+  quarkus:
+    keycloak:
+      admin-client:
+        server-url: ${KEYCLOAK_INTERNAL_URL}
+        realm: quarkus
+        grant-type: client-credentials
+        client-id: ${KEYCLOAK_ADMIN_CLIENT_ID:quarkus-admin-client}
+        secret: ${KEYCLOAK_ADMIN_CLIENT_SECRET}

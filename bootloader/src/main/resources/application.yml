@@ -2,34 +2,72 @@ quarkus:
   http:
     host: 0.0.0.0
     cors:
-     enabled: true
-    ssl:
-      native: true
-    http:
-      cors:
-        origins: /.*/
-    
+      enabled: true
+      origins: /.*/
+  
+  ssl:
+    native: true
+
   banner:
-    # remove quarkus logo at startup logs
     enabled: false
 
   log:
     level: INFO
+    format: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%X{correlationId}] [%X{traceId}/%X{spanId}] %logger{36} - %msg%n"
+    console:
+      json:
+        enabled: true
+        pretty-print: false
+
+  # OpenTelemetry
+  otel:
+    enabled: true
+    exporter:
+      otlp:
+        endpoint: http://localhost:4317
+        protocol: grpc
+    resource:
+      attributes: "service.name=user-bounded-context,service.version=0.0.1"
+    traces:
+      sampler: parentbased_traceidratio
+      sampler.arg: 1.0
+
+  # Micrometer
+  micrometer:
+    export:
+      prometheus:
+        enabled: true
+      otlp:
+        enabled: true
+        endpoint: http://localhost:4317
+        step: 60s
 
   # Default OIDC config - CustomOidcResolver provides dynamic tenant config
   oidc:
-    # Disable default tenant since we use dynamic resolution
     tenant-enabled: false
-    # Defer discovery to allow Keycloak to start first
     discovery-enabled: false
 
 "%prod":
+  eventbus:
+    external:
+      enabled: true
   quarkus:
     ssl:
       native: true
     http:
       cors:
         origins: /.*/
+    otel:
+      exporter:
+        otlp:
+          endpoint: http://otel-collector:4317
+          protocol: grpc
+    micrometer:
+      export:
+        otlp:
+          enabled: true
+          endpoint: http://otel-collector:4317
+          step: 60s
   vault:
     url: http://localhost:8200
 
@@ -43,16 +81,42 @@ quarkus:
     secret-config-kv-path: secret/myapp/config
   
 "%dev":
+  eventbus:
+    external:
+      enabled: true
   quarkus:
     http:
       cors:
         origins: /.*/
+    oidc:
+      tenant-enabled: false
+      discovery-enabled: false
+    devservices:
+      timeout: 300
+    rabbitmq-devservices:
+      enabled: false
     vault:
       devservices:
         init-commands: 'kv put secret/config password="p@$$w0rd"'
-        #port: 54995
+    keycloak:
+      devservices:
+        enabled: true
+    otel:
+      exporter:
+        otlp:
+          enabled: true
+          endpoint: http://localhost:4317
+          protocol: grpc
+    micrometer:
+      export:
+        otlp:
+          enabled: true
+          endpoint: http://localhost:4317
+          step: 60s
 
     log:
+      console:
+        json: true
       category:
         "com.microservice.quarkus":
           level: DEBUG
@@ -61,4 +125,28 @@ quarkus:
       file:
         enable: true
         path: target/quarkus.log
-        level: ALL   
+        level: ALL
+
+"%test":
+  eventbus:
+    external:
+      enabled: false
+  quarkus:
+    otel:
+      simple: true
+      exporter:
+        otlp:
+          enabled: true
+          endpoint: http://localhost:4317
+          protocol: grpc
+    micrometer:
+      export:
+        prometheus:
+          enabled: true
+        otlp:
+          enabled: true
+          endpoint: http://localhost:4317
+          step: 1s
+    log:
+      console:
+        json: true

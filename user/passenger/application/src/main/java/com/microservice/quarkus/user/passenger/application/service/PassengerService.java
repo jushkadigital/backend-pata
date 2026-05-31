@@ -1,80 +1,122 @@
 package com.microservice.quarkus.user.passenger.application.service;
 
-import com.microservice.quarkus.user.passenger.domain.entities.Passenger;
-import com.microservice.quarkus.user.passenger.domain.entities.PassengerId;
-import com.microservice.quarkus.user.passenger.domain.entities.PassengerType;
-import com.microservice.quarkus.user.passenger.domain.ports.out.PassengerRepository;
-import com.microservice.quarkus.user.passenger.domain.entities.EmailAddress;
-import com.microservice.quarkus.user.shared.domain.outbox.EventScope;
-import com.microservice.quarkus.user.shared.domain.outbox.OutboxEvent;
-import com.microservice.quarkus.user.shared.domain.outbox.OutboxEventRepository;
-import com.microservice.quarkus.user.passenger.domain.shared.DomainEvent;
+import com.microservice.quarkus.user.passenger.application.api.PassengerRepository;
 import com.microservice.quarkus.user.passenger.application.dto.CompletePassengerCommand;
 import com.microservice.quarkus.user.passenger.application.dto.CreatePassengerCommand;
+import com.microservice.quarkus.user.passenger.application.event.PassengerRegisteredEvent;
+import com.microservice.quarkus.user.passenger.domain.Passenger;
+import com.microservice.quarkus.user.shared.application.NotificationEvent;
+import com.microservice.quarkus.user.shared.application.outbox.EventMetadata;
+import com.microservice.quarkus.user.shared.application.outbox.EventScope;
+import com.microservice.quarkus.user.shared.application.outbox.OutboxEvent;
+import com.microservice.quarkus.user.shared.application.outbox.OutboxEventRepository;
+import com.microservice.quarkus.user.shared.application.outbox.TraceContextProvider;
 
 import io.vertx.core.json.JsonObject;
+import io.opentelemetry.instrumentation.annotations.WithSpan;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
 
 @ApplicationScoped
 public class PassengerService {
 
-  @Inject
-  OutboxEventRepository outboxEventRepository;
+  private static final String PRODUCER = "user-service";
 
-  private PassengerRepository userRepository;
+  private final PassengerRepository repository;
+  private final OutboxEventRepository outboxEventRepository;
+  private final TraceContextProvider traceContextProvider;
+  private final PassengerMetrics passengerMetrics;
 
-  @Inject
-  public PassengerService(PassengerRepository userRepository) {
-    this.userRepository = userRepository;
+  public PassengerService(PassengerRepository repository,
+                          OutboxEventRepository outboxEventRepository,
+                          TraceContextProvider traceContextProvider,
+                          PassengerMetrics passengerMetrics) {
+    this.repository = repository;
+    this.outboxEventRepository = outboxEventRepository;
+    this.traceContextProvider = traceContextProvider;
+    this.passengerMetrics = passengerMetrics;
   }
 
   @Transactional
   public String register(CreatePassengerCommand cmd) {
+    return register(cmd, null, null, null);
+  }
 
-    // Crear y guardar el agregado
-    Passenger passenger = Passenger.createNew(cmd.externalId(), cmd.email(), cmd.subType());
-    userRepository.save(passenger);
+  @Transactional
+  public String register(CreatePassengerCommand cmd, String correlationId) {
+    return register(cmd, correlationId, null, null);
+  }
 
-    // Guardar eventos de dominio en la tabla outbox compartida (MISMA TRANSACCIÓN)
-    passenger.domainEvents().forEach(domainEvent -> {
-      OutboxEvent outboxEvent = OutboxEvent.create(
-          "Passenger", // subdomain
-          "Passenger", // aggregateType
-          passenger.getId().value(),
-          domainEvent.getClass().getSimpleName(),
-          JsonObject.mapFrom(domainEvent).encode(),
-          EventScope.BOTH,
-          domainEvent.occurredOn());
+  @WithSpan("passenger.create")
+  @Transactional
+  public String register(CreatePassengerCommand cmd, String correlationId, String causationId, String actorId) {
+    Passenger passenger = Passenger.createNew(cmd.email(), cmd.externalId(), cmd.subType());
+    repository.save(passenger);
 
-      outboxEventRepository.save(outboxEvent);
-      System.out.println("📦 Outbox: Evento " + domainEvent.getClass().getSimpleName() +
-          " guardado para subdomain Passenger: " + cmd.email());
-    });
+    String effectiveCorrelationId = correlationId != null ? correlationId : java.util.UUID.randomUUID().toString();
+    EventMetadata traceMeta = traceContextProvider.current();
 
-    // Limpiar eventos del agregado después de guardarlos en outbox
-    passenger.clearDomainEvents();
+    PassengerRegisteredEvent event = new PassengerRegisteredEvent(
+        cmd.externalId(), cmd.email(), cmd.subType(),
+        effectiveCorrelationId, causationId,
+        traceMeta.traceId(), traceMeta.spanId(),
+        PRODUCER, actorId, null);
+    OutboxEvent outboxEvent = OutboxEvent.create(
+        event.eventType(),
+        event.eventVersion(),
+        event.aggregateType(),
+        passenger.getId().value(),
+        effectiveCorrelationId,
+        causationId,
+        traceMeta.traceId(),
+        traceMeta.spanId(),
+        PRODUCER,
+        actorId,
+        null,
+            JsonObject.mapFrom(event).encode(),
+            EventScope.EXTERNAL_ONLY,
+            event.occurredOn());
+    outboxEventRepository.save(outboxEvent);
+
+    NotificationEvent notification = NotificationEvent.from(event, passenger.getId().value(), event.aggregateType());
+    OutboxEvent notificationOutbox = OutboxEvent.create(
+        "notification.passenger.registered.v1",
+        notification.eventVersion(),
+        notification.aggregateType(),
+        passenger.getId().value(),
+        effectiveCorrelationId,
+        causationId,
+        traceMeta.traceId(),
+        traceMeta.spanId(),
+        PRODUCER,
+        actorId,
+        null,
+        JsonObject.mapFrom(notification).encode(),
+        EventScope.EXTERNAL_ONLY,
+        event.occurredOn());
+    outboxEventRepository.save(notificationOutbox);
+    passengerMetrics.recordCreated();
 
     return passenger.getId().value();
   }
 
+  @WithSpan("passenger.complete")
   @Transactional
-  public String complete(String id, CompletePassengerCommand cmd) {
-    Passenger passenger = userRepository.findByExternalId(id);
-    if (passenger == null) {
-      throw new IllegalArgumentException("Passenger not found with externalId: " + id);
-    }
+  public String complete(String externalId, CompletePassengerCommand cmd) {
+    Passenger passenger = repository.findByExternalId(externalId)
+        .orElseThrow(() -> new IllegalArgumentException("Passenger not found with externalId: " + externalId));
+
     passenger.completeProfile(cmd.firstNames(), cmd.lastNames(), cmd.dni(), cmd.phone());
-    userRepository.update(passenger);
+    repository.save(passenger);
 
     return passenger.getId().value();
+  }
+
+  @WithSpan("passenger.delete")
+  @Transactional
+  public void deleteByExternalId(String externalId) {
+    repository.deleteByExternalId(externalId);
+    passengerMetrics.recordDeleted();
   }
 
 }

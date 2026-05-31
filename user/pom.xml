@@ -36,7 +36,7 @@
   </build>
     <modules>
         <module>shared</module>
-        <module>iam</module>
+        <module>identity</module>
         <module>admin</module>
         <module>passenger</module>
     </modules>

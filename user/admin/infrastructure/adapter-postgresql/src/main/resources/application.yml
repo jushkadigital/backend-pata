@@ -1,11 +1,12 @@
 quarkus:
   datasource:
     db-kind: postgresql
-  
+
   hibernate-orm:
-    default-schema: quarkus   
+    database:
+      default-schema: quarkus
     schema-management:
-        strategy: validate 
+      strategy: validate
 
 "%dev":
   quarkus:
@@ -17,9 +18,9 @@ quarkus:
     hibernate-orm:
       database:
         generation: none
+        default-schema: quarkus
       schema-management:
         strategy: validate
-      default-schema: quarkus
 
     flyway:
       clean-at-start: true
@@ -39,9 +40,9 @@ quarkus:
     hibernate-orm:
       database:
         generation: none
+        default-schema: quarkus
       schema-management:
         strategy: validate
-      default-schema: quarkus
 
     flyway:
       clean-at-start: false
