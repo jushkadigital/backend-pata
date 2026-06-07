@@ -16,7 +16,8 @@ public record NotificationEvent(
     String aggregateId,
     String aggregateType,
     UUID eventId,
-    Instant occurredOn) {
+    Instant occurredOn,
+    String specVersion) {
 
   public static NotificationEvent from(IntegrationEvent source, String aggregateId, String aggregateType) {
     return new NotificationEvent(
@@ -32,6 +33,7 @@ public record NotificationEvent(
         aggregateId,
         aggregateType,
         source.eventId(),
-        source.occurredOn());
+        source.occurredOn(),
+        source.specVersion());
   }
 }

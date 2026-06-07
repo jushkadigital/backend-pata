@@ -28,13 +28,13 @@ public class Passenger extends RootAggregate {
     /**
      * Factory method — creates a new passenger with INCOMPLETE_PROFILE status.
      */
-    public static Passenger createNew(String email, String externalId, String subType) {
+    public static Passenger createNew(String email, String externalId, String passengerType) {
         Instant now = Instant.now();
         Passenger passenger = new Passenger();
         passenger.id = PassengerId.random();
         passenger.email = new EmailAddress(email);
         passenger.externalId = externalId;
-        passenger.type = PassengerType.valueOf(subType.toUpperCase());
+        passenger.type = PassengerType.valueOf(passengerType.toUpperCase());
         passenger.status = PassengerStatus.INCOMPLETE_PROFILE;
         passenger.createdAt = now;
         passenger.updatedAt = now;

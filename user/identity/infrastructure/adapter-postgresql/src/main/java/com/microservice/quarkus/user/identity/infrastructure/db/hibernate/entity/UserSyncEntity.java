@@ -1,7 +1,6 @@
 package com.microservice.quarkus.user.identity.infrastructure.db.hibernate.entity;
 
 import com.microservice.quarkus.user.identity.application.dto.SyncStatus;
-import com.microservice.quarkus.user.identity.application.dto.UserType;
 import com.microservice.quarkus.user.identity.infrastructure.db.hibernate.converter.EmailAddressConverter;
 import com.microservice.quarkus.user.shared.domain.EmailAddress;
 
@@ -31,9 +30,11 @@ public class UserSyncEntity extends PanacheEntityBase {
   @Column(name = "external_id", unique = true)
   private String externalId;
 
-  @Enumerated(EnumType.STRING)
   @Column(name = "user_type", nullable = false)
-  private UserType type;
+  private String userType;
+
+  @Column(name = "roles", nullable = false)
+  private String roles;
 
   @Enumerated(EnumType.STRING)
   @Column(name = "sync_status", nullable = false)

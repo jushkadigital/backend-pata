@@ -3,7 +3,7 @@ package com.microservice.quarkus.user.passenger.application.service;
 import com.microservice.quarkus.user.passenger.application.api.PassengerRepository;
 import com.microservice.quarkus.user.passenger.application.dto.CompletePassengerCommand;
 import com.microservice.quarkus.user.passenger.application.dto.CreatePassengerCommand;
-import com.microservice.quarkus.user.passenger.application.event.PassengerRegisteredEvent;
+import com.microservice.quarkus.user.passenger.application.event.PassengerCreatedEvent;
 import com.microservice.quarkus.user.passenger.domain.Passenger;
 import com.microservice.quarkus.user.shared.application.NotificationEvent;
 import com.microservice.quarkus.user.shared.application.outbox.EventMetadata;
@@ -50,14 +50,14 @@ public class PassengerService {
   @WithSpan("passenger.create")
   @Transactional
   public String register(CreatePassengerCommand cmd, String correlationId, String causationId, String actorId) {
-    Passenger passenger = Passenger.createNew(cmd.email(), cmd.externalId(), cmd.subType());
+    Passenger passenger = Passenger.createNew(cmd.email(), cmd.externalId(), cmd.passengerType());
     repository.save(passenger);
 
     String effectiveCorrelationId = correlationId != null ? correlationId : java.util.UUID.randomUUID().toString();
     EventMetadata traceMeta = traceContextProvider.current();
 
-    PassengerRegisteredEvent event = new PassengerRegisteredEvent(
-        cmd.externalId(), cmd.email(), cmd.subType(),
+    PassengerCreatedEvent event = PassengerCreatedEvent.v1(
+        cmd.externalId(), cmd.email(), cmd.passengerType(),
         effectiveCorrelationId, causationId,
         traceMeta.traceId(), traceMeta.spanId(),
         PRODUCER, actorId, null);
@@ -73,14 +73,15 @@ public class PassengerService {
         PRODUCER,
         actorId,
         null,
-            JsonObject.mapFrom(event).encode(),
-            EventScope.EXTERNAL_ONLY,
-            event.occurredOn());
+        PassengerCreatedEvent.CURRENT_SPEC_VERSION,
+        JsonObject.mapFrom(event).encode(),
+        EventScope.EXTERNAL_ONLY,
+        event.occurredOn());
     outboxEventRepository.save(outboxEvent);
 
     NotificationEvent notification = NotificationEvent.from(event, passenger.getId().value(), event.aggregateType());
     OutboxEvent notificationOutbox = OutboxEvent.create(
-        "notification.passenger.registered.v1",
+        "notification.passenger.created.v1",
         notification.eventVersion(),
         notification.aggregateType(),
         passenger.getId().value(),
@@ -91,6 +92,7 @@ public class PassengerService {
         PRODUCER,
         actorId,
         null,
+        PassengerCreatedEvent.CURRENT_SPEC_VERSION,
         JsonObject.mapFrom(notification).encode(),
         EventScope.EXTERNAL_ONLY,
         event.occurredOn());

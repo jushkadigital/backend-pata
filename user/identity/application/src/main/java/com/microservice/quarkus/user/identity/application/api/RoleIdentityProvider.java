@@ -7,7 +7,11 @@ import com.microservice.quarkus.user.identity.application.dto.KeycloakRoleDTO;
 public interface RoleIdentityProvider {
   String createRole(String roleName, String description, String clientId);
 
+  String createCompositeRole(String roleName, String description, String clientId, List<String> compositeRoleNames);
+
   List<KeycloakRoleDTO> getAllRoles();
 
   void assignClientRoleToGroup(String groupId, String clientId, String roleName);
+
+  void assignClientRoleToUser(String userId, String clientId, String roleName);
 }

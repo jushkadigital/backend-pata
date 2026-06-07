@@ -81,42 +81,42 @@ class OutboxEventPublisherTest {
 
     @Test
     void publishPendingEvents_shouldPublishToEventBusAndRabbitMqWhenExternalEnabledAndBoth() {
-        OutboxEvent event = createEvent(EventScope.BOTH, "identity.user.registered.v1");
+        OutboxEvent event = createEvent(EventScope.BOTH, "identity.user.created.v1");
         when(outboxEventRepository.findUnpublished()).thenReturn(List.of(event));
         when(rabbitMqBroker.publish(anyString(), anyString(), any()))
             .thenReturn(CompletableFuture.completedFuture(null));
 
         createPublisher(true).publishPendingEvents();
 
-        verify(eventBus).publish(eq("identity.user.registered"), anyString());
-        verify(rabbitMqBroker).publish(eq("identity.user.registered"), anyString(), any());
+        verify(eventBus).publish(eq("identity.user.created.v1"), anyString());
+        verify(rabbitMqBroker).publish(eq("identity.user.created.v1"), anyString(), any());
     }
 
     @Test
     void publishPendingEvents_shouldPublishToEventBusOnlyWhenExternalDisabled() {
-        OutboxEvent event = createEvent(EventScope.BOTH, "identity.user.registered.v1");
+        OutboxEvent event = createEvent(EventScope.BOTH, "identity.user.created.v1");
         when(outboxEventRepository.findUnpublished()).thenReturn(List.of(event));
 
         createPublisher(false).publishPendingEvents();
 
-        verify(eventBus).publish(eq("identity.user.registered"), anyString());
+        verify(eventBus).publish(eq("identity.user.created.v1"), anyString());
         verify(rabbitMqBroker, never()).publish(anyString(), anyString(), any());
     }
 
     @Test
     void publishPendingEvents_shouldPublishInternalOnlyToEventBusOnlyEvenWhenExternalEnabled() {
-        OutboxEvent event = createEvent(EventScope.INTERNAL_ONLY, "identity.user.registered.v1");
+        OutboxEvent event = createEvent(EventScope.INTERNAL_ONLY, "identity.user.created.v1");
         when(outboxEventRepository.findUnpublished()).thenReturn(List.of(event));
 
         createPublisher(true).publishPendingEvents();
 
-        verify(eventBus).publish(eq("identity.user.registered"), anyString());
+        verify(eventBus).publish(eq("identity.user.created.v1"), anyString());
         verify(rabbitMqBroker, never()).publish(anyString(), anyString(), any());
     }
 
     @Test
     void publishPendingEvents_shouldPublishExternalOnlyToRabbitMqOnlyWhenEnabled() {
-        OutboxEvent event = createEvent(EventScope.EXTERNAL_ONLY, "notification.identity.user.registered.v1");
+        OutboxEvent event = createEvent(EventScope.EXTERNAL_ONLY, "notification.identity.user.created.v1");
         when(outboxEventRepository.findUnpublished()).thenReturn(List.of(event));
         when(rabbitMqBroker.publish(anyString(), anyString(), any()))
             .thenReturn(CompletableFuture.completedFuture(null));
@@ -124,12 +124,12 @@ class OutboxEventPublisherTest {
         createPublisher(true).publishPendingEvents();
 
         verify(eventBus, never()).publish(anyString(), anyString());
-        verify(rabbitMqBroker).publish(eq("notification.identity.user.registered"), anyString(), any());
+        verify(rabbitMqBroker).publish(eq("notification.identity.user.created.v1"), anyString(), any());
     }
 
     @Test
     void publishPendingEvents_shouldNotPublishExternalOnlyWhenRabbitMqDisabled() {
-        OutboxEvent event = createEvent(EventScope.EXTERNAL_ONLY, "notification.identity.user.registered.v1");
+        OutboxEvent event = createEvent(EventScope.EXTERNAL_ONLY, "notification.identity.user.created.v1");
         when(outboxEventRepository.findUnpublished()).thenReturn(List.of(event));
 
         createPublisher(false).publishPendingEvents();
@@ -147,7 +147,7 @@ class OutboxEventPublisherTest {
 
         createPublisher(true).publishPendingEvents();
 
-        verify(eventBus).publish(eq("identity.user.deleted"), anyString());
-        verify(rabbitMqBroker).publish(eq("identity.user.deleted"), anyString(), any());
+        verify(eventBus).publish(eq("identity.user.deleted.v1"), anyString());
+        verify(rabbitMqBroker).publish(eq("identity.user.deleted.v1"), anyString(), any());
     }
 }

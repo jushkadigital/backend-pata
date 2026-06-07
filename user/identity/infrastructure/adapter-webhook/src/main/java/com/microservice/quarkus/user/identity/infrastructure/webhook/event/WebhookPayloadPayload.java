@@ -6,6 +6,6 @@ import java.util.UUID;
 public record WebhookPayloadPayload(
     String email,
     String password,
-    String type,
-    String clientId) {
+    String clientId,
+    String role) {
 }

@@ -53,7 +53,6 @@ import java.util.stream.Collectors;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.microservice.quarkus.user.identity.application.dto.ClientSummary;
 import com.microservice.quarkus.user.identity.application.dto.TenantConfigDTO;
-import com.microservice.quarkus.user.identity.application.dto.UserType;
 import io.opentelemetry.instrumentation.annotations.WithSpan;
 
 @ApplicationScoped
@@ -292,6 +291,82 @@ public class KeycloakService {
 
     } catch (Exception e) {
       log.error("ERROR asignando rol: {}", e.getMessage(), e);
+    }
+  }
+
+  public void assignClientRoleToUser(String userId, String clientId, String roleName) {
+    RealmResource realm = keycloak.realm(REALM_NAME);
+    try {
+      List<ClientRepresentation> clients = realm.clients().findByClientId(clientId);
+      if (clients.isEmpty()) {
+        throw new RuntimeException("El cliente '" + clientId + "' no existe.");
+      }
+      String clientUuid = clients.get(0).getId();
+
+      RoleRepresentation clientRole = realm.clients().get(clientUuid)
+          .roles().get(roleName).toRepresentation();
+
+      realm.users().get(userId)
+          .roles()
+          .clientLevel(clientUuid)
+          .add(Collections.singletonList(clientRole));
+
+      log.info("Rol '{}' (del cliente {}) asignado al usuario ID: {}", roleName, clientId, userId);
+
+    } catch (Exception e) {
+      log.error("ERROR asignando rol al usuario: {}", e.getMessage(), e);
+      throw new RuntimeException("Error asignando rol '" + roleName + "' al usuario " + userId, e);
+    }
+  }
+
+  public String createCompositeClientRole(String roleName, String description, String clientId, List<String> compositeRoleNames) {
+    RealmResource realm = keycloak.realm(REALM_NAME);
+    try {
+      List<ClientRepresentation> clients = realm.clients().findByClientId(clientId);
+      if (clients.isEmpty()) {
+        throw new RuntimeException("El cliente '" + clientId + "' no existe.");
+      }
+      String clientUuid = clients.get(0).getId();
+
+      RolesResource rolesResource = realm.clients().get(clientUuid).roles();
+
+      RoleRepresentation existingRole = null;
+      try {
+        existingRole = rolesResource.get(roleName).toRepresentation();
+      } catch (Exception e) {
+      }
+
+      if (existingRole != null) {
+        log.info("Rol compuesto '{}' ya existe en el cliente {}", roleName, clientId);
+        return "";
+      }
+
+      RoleRepresentation compositeRole = new RoleRepresentation();
+      compositeRole.setName(roleName);
+      compositeRole.setDescription(description);
+      compositeRole.setComposite(true);
+      rolesResource.create(compositeRole);
+
+      List<RoleRepresentation> composites = new ArrayList<>();
+      for (String compositeName : compositeRoleNames) {
+        try {
+          RoleRepresentation childRole = rolesResource.get(compositeName).toRepresentation();
+          composites.add(childRole);
+        } catch (Exception e) {
+          log.warn("Rol hijo '{}' no encontrado en el cliente {}, omitiendo del composite", compositeName, clientId);
+        }
+      }
+
+      if (!composites.isEmpty()) {
+        rolesResource.get(roleName).addComposites(composites);
+      }
+
+      log.info("Rol compuesto '{}' creado en el cliente {} con {} roles hijos", roleName, clientId, composites.size());
+      return roleName;
+
+    } catch (Exception e) {
+      log.error("Error creando rol compuesto '{}': {}", roleName, e.getMessage(), e);
+      throw new RuntimeException("Error creando rol compuesto: " + roleName, e);
     }
   }
 

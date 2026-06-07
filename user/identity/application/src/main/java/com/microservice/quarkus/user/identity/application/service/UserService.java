@@ -6,8 +6,7 @@ import com.microservice.quarkus.user.identity.application.dto.CreateUserCommand;
 import com.microservice.quarkus.user.identity.application.dto.KeycloakUserDTO;
 import com.microservice.quarkus.user.identity.application.dto.SyncStatus;
 import com.microservice.quarkus.user.identity.application.dto.UserSyncRecord;
-import com.microservice.quarkus.user.identity.application.dto.UserType;
-import com.microservice.quarkus.user.identity.application.event.IdentityUserRegistered;
+import com.microservice.quarkus.user.identity.application.event.IdentityUserCreated;
 import com.microservice.quarkus.user.shared.application.outbox.EventMetadata;
 import com.microservice.quarkus.user.shared.application.outbox.TraceContextProvider;
 
@@ -58,7 +57,8 @@ public class UserService {
       return existing.externalId();
     }
 
-    UserType type = UserType.valueOf(cmd.type().toUpperCase());
+    List<String> roles = new ArrayList<>(cmd.roles());
+    String userType = cmd.userType();
     String effectiveCorrelationId = correlationId != null ? correlationId : java.util.UUID.randomUUID().toString();
     EventMetadata traceMeta = traceContextProvider.current();
 
@@ -75,19 +75,19 @@ public class UserService {
     }
 
     if (keycloakFailed) {
-      persistenceService.persistFailedSync(cmd.email(), type);
+      persistenceService.persistFailedSync(cmd.email(), userType, roles);
       return null;
     }
 
     if (cmd.isFromKeycloak()) {
       // Webhook flow — immediate sync (user already exists in Keycloak)
-      IdentityUserRegistered domainEvent = new IdentityUserRegistered(
-          externalId, cmd.email(), cmd.type(), cmd.subtype());
-      persistenceService.persistSyncAndOutbox(cmd.email(), type, externalId, domainEvent,
+      IdentityUserCreated domainEvent = new IdentityUserCreated(
+          externalId, cmd.email(), userType, roles);
+      persistenceService.persistSyncAndOutbox(cmd.email(), userType, roles, externalId, domainEvent,
           effectiveCorrelationId, causationId, traceMeta, actorId);
     } else {
       // Admin/API flow — phased sync (Phase 1 only, processor handles Phase 2)
-      persistenceService.persistPendingSync(cmd.email(), type, externalId,
+      persistenceService.persistPendingSync(cmd.email(), userType, roles, externalId,
           effectiveCorrelationId, causationId, traceMeta, actorId);
     }
 

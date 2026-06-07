@@ -4,6 +4,7 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -12,7 +13,6 @@ import com.microservice.quarkus.user.identity.application.api.IdentitySyncReposi
 import com.microservice.quarkus.user.identity.application.dto.ClientSummary;
 import com.microservice.quarkus.user.identity.application.dto.SyncStatus;
 import com.microservice.quarkus.user.identity.application.dto.UserSyncRecord;
-import com.microservice.quarkus.user.identity.application.dto.UserType;
 
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -86,7 +86,8 @@ class WebhookPayloadE2ETest {
         UserSyncRecord record = identitySyncRepository.findByExternalId(providerId);
         assertNotNull(record);
         assertEquals(email, record.email());
-        assertEquals(UserType.ADMIN, record.type());
+        assertEquals("ADMIN", record.userType());
+        assertEquals(List.of("editor"), record.roles());
         // Phased sync: webhook payload creates user in Keycloak first, then persists as PENDING.
         // SyncStatusProcessor will transition PENDING → SYNCED asynchronously.
         assertEquals(SyncStatus.PENDING, record.syncStatus());
@@ -117,7 +118,8 @@ class WebhookPayloadE2ETest {
 
         UserSyncRecord record = identitySyncRepository.findByExternalId(providerId);
         assertNotNull(record);
-        assertEquals(UserType.PASSENGER, record.type());
+        assertEquals("PASSENGER", record.userType());
+        assertEquals(List.of("basic"), record.roles());
     }
 
     // ───────────────────────────────────────────────────────────────

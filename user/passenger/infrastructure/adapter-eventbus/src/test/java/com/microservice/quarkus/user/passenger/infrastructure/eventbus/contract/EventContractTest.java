@@ -2,13 +2,14 @@ package com.microservice.quarkus.user.passenger.infrastructure.eventbus.contract
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.microservice.quarkus.user.passenger.infrastructure.eventbus.acl.UserRegisteredEventDTO;
+import com.microservice.quarkus.user.passenger.infrastructure.eventbus.acl.UserCreatedEventDTO;
 import com.microservice.quarkus.user.passenger.infrastructure.eventbus.acl.UserDeletedEventDTO;
 
 import io.vertx.core.json.JsonObject;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -17,15 +18,15 @@ import java.util.UUID;
  */
 class EventContractTest {
 
-    private String buildUserRegisteredEventJson() {
+    private String buildUserCreatedEventJson() {
         return new JsonObject()
             .put("aggregateId", "ext-123")
             .put("aggregateType", "User")
-            .put("eventType", "identity.user.registered.v1")
+            .put("eventType", "identity.user.created.v1")
             .put("eventVersion", 1)
             .put("email", "user@example.com")
-            .put("type", "PASSENGER")
-            .put("subType", "STANDARD")
+            .put("userType", "PASSENGER")
+            .put("clientRoles", List.of("basic"))
             .put("correlationId", "corr-1")
             .put("causationId", (String) null)
             .put("traceId", "trace-1")
@@ -39,17 +40,17 @@ class EventContractTest {
     }
 
     @Test
-    void userRegisteredEvent_shouldDeserializeIntoPassengerDTO() {
-        String json = buildUserRegisteredEventJson();
-        UserRegisteredEventDTO dto = new JsonObject(json).mapTo(UserRegisteredEventDTO.class);
+    void userCreatedEvent_shouldDeserializeIntoPassengerDTO() {
+        String json = buildUserCreatedEventJson();
+        UserCreatedEventDTO dto = new JsonObject(json).mapTo(UserCreatedEventDTO.class);
 
         assertEquals("ext-123", dto.aggregateId());
         assertEquals("User", dto.aggregateType());
-        assertEquals("identity.user.registered.v1", dto.eventType());
+        assertEquals("identity.user.created.v1", dto.eventType());
         assertEquals(1, dto.eventVersion());
         assertEquals("user@example.com", dto.email());
-        assertEquals("PASSENGER", dto.type());
-        assertEquals("STANDARD", dto.subType());
+        assertEquals("PASSENGER", dto.userType());
+        assertEquals(List.of("basic"), dto.clientRoles());
         assertEquals("corr-1", dto.correlationId());
         assertNull(dto.causationId());
         assertEquals("trace-1", dto.traceId());
@@ -77,6 +78,8 @@ class EventContractTest {
             .put("tenantId", (String) null)
             .put("eventId", UUID.randomUUID().toString())
             .put("occurredOn", Instant.now().toString())
+            .put("email", "deleted@example.com")
+            .put("userType", "PASSENGER")
             .encode();
 
         UserDeletedEventDTO dto = new JsonObject(json).mapTo(UserDeletedEventDTO.class);
@@ -94,5 +97,7 @@ class EventContractTest {
         assertNull(dto.tenantId());
         assertNotNull(dto.eventId());
         assertNotNull(dto.occurredOn());
+        assertEquals("deleted@example.com", dto.email());
+        assertEquals("PASSENGER", dto.userType());
     }
 }

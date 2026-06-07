@@ -94,13 +94,13 @@ class EventMetadataIT {
         assertFalse(events.isEmpty(), "Outbox should contain events after registration");
 
         OutboxEvent integrationEvent = events.stream()
-                .filter(e -> "identity.user.registered.v1".equals(e.getEventType()))
+                .filter(e -> "identity.user.created.v1".equals(e.getEventType()))
                 .findFirst()
                 .orElseThrow();
 
         // Verify all 13 EventMetadata fields
         assertNotNull(integrationEvent.getId(), "eventId must not be null");
-        assertEquals("identity.user.registered.v1", integrationEvent.getEventType());
+        assertEquals("identity.user.created.v1", integrationEvent.getEventType());
         assertNotNull(integrationEvent.getEventVersion(), "eventVersion must not be null");
         assertEquals(1, integrationEvent.getEventVersion(), "eventVersion should be CURRENT_VERSION=1");
         assertEquals("User", integrationEvent.getAggregateType());
@@ -122,7 +122,8 @@ class EventMetadataIT {
         try {
             JsonNode payload = objectMapper.readTree(integrationEvent.getEventPayload());
             assertEquals(email, payload.get("email").asText());
-            assertEquals("ADMIN", payload.get("type").asText());
+            assertNotNull(payload.get("userType"), "payload must contain userType");
+            assertNotNull(payload.get("clientRoles"), "payload must contain clientRoles");
             assertNotNull(payload.get("aggregateId"), "payload must contain aggregateId");
             assertEquals(record.id(), payload.get("correlationId").asText(), "payload correlationId must match record id");
             assertTrue(payload.get("causationId").isNull(), "payload causationId must be null for entry-point events");
@@ -162,9 +163,9 @@ class EventMetadataIT {
 
         List<OutboxEvent> events = outboxEventRepository.findUnpublished();
         OutboxEvent notificationEvent = events.stream()
-                .filter(e -> "notification.identity.user.registered.v1".equals(e.getEventType()))
+                .filter(e -> "notification.identity.user.created.v1".equals(e.getEventType()))
                 .findFirst()
-                .orElseThrow(() -> new AssertionError("notification.identity.user.registered.v1 event not found in outbox"));
+                .orElseThrow(() -> new AssertionError("notification.identity.user.created.v1 event not found in outbox"));
 
         assertEquals(com.microservice.quarkus.user.shared.application.outbox.EventScope.EXTERNAL_ONLY,
                 notificationEvent.getScope(), "Notification must be EXTERNAL_ONLY");
@@ -277,7 +278,7 @@ class EventMetadataIT {
         identityPersistenceService.completeSync(record);
 
         OutboxEvent event = outboxEventRepository.findUnpublished().stream()
-                .filter(e -> "identity.user.registered.v1".equals(e.getEventType()))
+                .filter(e -> "identity.user.created.v1".equals(e.getEventType()))
                 .findFirst()
                 .orElseThrow();
 
@@ -338,7 +339,7 @@ class EventMetadataIT {
         identityPersistenceService.completeSync(record);
 
         OutboxEvent event = outboxEventRepository.findUnpublished().stream()
-                .filter(e -> "identity.user.registered.v1".equals(e.getEventType()))
+                .filter(e -> "identity.user.created.v1".equals(e.getEventType()))
                 .findFirst()
                 .orElseThrow();
 

@@ -7,7 +7,6 @@ import static org.mockito.Mockito.*;
 import com.microservice.quarkus.user.identity.application.api.IdentitySyncRepository;
 import com.microservice.quarkus.user.identity.application.dto.SyncStatus;
 import com.microservice.quarkus.user.identity.application.dto.UserSyncRecord;
-import com.microservice.quarkus.user.identity.application.dto.UserType;
 import com.microservice.quarkus.user.identity.application.service.IdentityPersistenceService;
 
 import io.micrometer.core.instrument.Counter;
@@ -71,7 +70,7 @@ class SyncStatusProcessorTest {
     void processPendingSyncs_shouldCompletePendingRecord() {
         // Given
         UserSyncRecord readyRecord = new UserSyncRecord(
-            "id-1", "test@example.com", "ext-1", UserType.PASSENGER,
+            "id-1", "test@example.com", "ext-1", "PASSENGER", List.of("basic"),
             SyncStatus.PENDING, Instant.now().minusSeconds(60), Instant.now(), 0, 5, null
         );
 
@@ -92,7 +91,7 @@ class SyncStatusProcessorTest {
     void processPendingSyncs_shouldSkipNotReadyRecord() {
         // Given
         UserSyncRecord notReadyRecord = new UserSyncRecord(
-            "id-2", "future@example.com", "ext-2", UserType.PASSENGER,
+            "id-2", "future@example.com", "ext-2", "PASSENGER", List.of("basic"),
             SyncStatus.PENDING, Instant.now().minusSeconds(60), Instant.now(), 0, 5,
             Instant.now().plusSeconds(300)
         );
@@ -115,7 +114,7 @@ class SyncStatusProcessorTest {
         // Given
         UserSyncRecord record = mock(UserSyncRecord.class);
         UserSyncRecord updatedRecord = new UserSyncRecord(
-            "id-3", "retry@example.com", "ext-3", UserType.PASSENGER,
+            "id-3", "retry@example.com", "ext-3", "PASSENGER", List.of("basic"),
             SyncStatus.PENDING, Instant.now().minusSeconds(60), Instant.now(), 3, 5,
             Instant.now().plusSeconds(120)
         );
@@ -181,12 +180,12 @@ class SyncStatusProcessorTest {
     void processPendingSyncs_shouldProcessMultipleRecords() {
         // Given
         UserSyncRecord readyRecord1 = new UserSyncRecord(
-            "id-5", "user1@example.com", "ext-5", UserType.PASSENGER,
+            "id-5", "user1@example.com", "ext-5", "PASSENGER", List.of("basic"),
             SyncStatus.PENDING, Instant.now().minusSeconds(60), Instant.now(), 0, 5, null
         );
 
         UserSyncRecord readyRecord2 = new UserSyncRecord(
-            "id-6", "user2@example.com", "ext-6", UserType.PASSENGER,
+            "id-6", "user2@example.com", "ext-6", "PASSENGER", List.of("basic"),
             SyncStatus.PENDING, Instant.now().minusSeconds(60), Instant.now(), 0, 5, null
         );
 
@@ -208,12 +207,12 @@ class SyncStatusProcessorTest {
     void processPendingSyncs_shouldHandleMixedReadyAndNotReadyRecords() {
         // Given
         UserSyncRecord readyRecord = new UserSyncRecord(
-            "id-7", "ready@example.com", "ext-7", UserType.PASSENGER,
+            "id-7", "ready@example.com", "ext-7", "PASSENGER", List.of("basic"),
             SyncStatus.PENDING, Instant.now().minusSeconds(60), Instant.now(), 0, 5, null
         );
 
         UserSyncRecord notReadyRecord = new UserSyncRecord(
-            "id-8", "notready@example.com", "ext-8", UserType.PASSENGER,
+            "id-8", "notready@example.com", "ext-8", "PASSENGER", List.of("basic"),
             SyncStatus.PENDING, Instant.now().minusSeconds(60), Instant.now(), 0, 5,
             Instant.now().plusSeconds(300)
         );

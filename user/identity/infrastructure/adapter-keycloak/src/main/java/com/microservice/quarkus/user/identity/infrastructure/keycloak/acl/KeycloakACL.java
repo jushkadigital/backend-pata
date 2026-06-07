@@ -56,6 +56,11 @@ public class KeycloakACL implements KeycloakProvider, RoleIdentityProvider, Clie
   }
 
   @Override
+  public String createCompositeRole(String roleName, String description, String clientId, List<String> compositeRoleNames) {
+    return keycloakService.createCompositeClientRole(roleName, description, clientId, compositeRoleNames);
+  }
+
+  @Override
   public String createClient(String name, List<String> items) {
     return keycloakService.createClient(name, items);
   }
@@ -79,6 +84,11 @@ public class KeycloakACL implements KeycloakProvider, RoleIdentityProvider, Clie
   @Override
   public void assignClientRoleToGroup(String groupId, String clientId, String roleName) {
     keycloakService.assignClientRoleToGroup(groupId, clientId, roleName);
+  }
+
+  @Override
+  public void assignClientRoleToUser(String userId, String clientId, String roleName) {
+    keycloakService.assignClientRoleToUser(userId, clientId, roleName);
   }
 
   @Override

@@ -2,19 +2,64 @@ rabbitmq-host: rabbitmq
 rabbitmq-port: 5672
 rabbitmq-username: admin
 rabbitmq-password: admin123
+
 "%dev":
   rabbitmq-host: localhost
+
+"%prod":
+  rabbitmq-host: ${RABBITMQ_HOST}
+  rabbitmq-port: ${RABBITMQ_PORT:5672}
+  rabbitmq-username: ${RABBITMQ_USERNAME}
+  rabbitmq-password: ${RABBITMQ_PASSWORD}
+  mp:
+    messaging:
+      outgoing:
+        identity-events-out:
+          connector: smallrye-rabbitmq
+          exchange:
+            name: identity.events
+            type: topic
+            durable: true
+          default-routing-key: "identity.#"
+          connection-uri: amqp://${RABBITMQ_USERNAME}:${RABBITMQ_PASSWORD}@${RABBITMQ_HOST}:${RABBITMQ_PORT:5672}
+        passenger-events-out:
+          connector: smallrye-rabbitmq
+          exchange:
+            name: passenger.events
+            type: topic
+            durable: true
+          default-routing-key: "passenger.#"
+          connection-uri: amqp://${RABBITMQ_USERNAME}:${RABBITMQ_PASSWORD}@${RABBITMQ_HOST}:${RABBITMQ_PORT:5672}
+        notification-events-out:
+          connector: smallrye-rabbitmq
+          exchange:
+            name: notification.events
+            type: topic
+            durable: true
+          default-routing-key: "notification.#"
+          connection-uri: amqp://${RABBITMQ_USERNAME}:${RABBITMQ_PASSWORD}@${RABBITMQ_HOST}:${RABBITMQ_PORT:5672}
+
 mp:
   messaging:
     outgoing:
-      domain-events-out:
+      identity-events-out:
         connector: smallrye-rabbitmq
-        # Configuración del Exchange
         exchange:
-          name: tourism-exchange # El nombre del "buzón" en RabbitMQ
-          type: topic            # 'topic' permite usar routing keys como "identity.user.created"
+          name: identity.events
+          type: topic
           durable: true
-        # Clave por defecto (la sobreescribiremos en el código, pero es obligatoria)
-        default-routing-key: "#"
-        # Hacer que el canal sea transaccional/confirmado (espera ACK)
-        merge: true
+        default-routing-key: "identity.#"
+      passenger-events-out:
+        connector: smallrye-rabbitmq
+        exchange:
+          name: passenger.events
+          type: topic
+          durable: true
+        default-routing-key: "passenger.#"
+      notification-events-out:
+        connector: smallrye-rabbitmq
+        exchange:
+          name: notification.events
+          type: topic
+          durable: true
+        default-routing-key: "notification.#"

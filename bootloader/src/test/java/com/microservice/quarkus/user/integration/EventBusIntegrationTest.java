@@ -5,9 +5,9 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
-import com.microservice.quarkus.user.admin.infrastructure.db.hibernate.dbo.AdminEntity;
 import com.microservice.quarkus.user.passenger.domain.Passenger;
 
 import io.quarkus.test.junit.QuarkusTest;
@@ -28,19 +28,18 @@ class EventBusIntegrationTest {
     @BeforeEach
     void cleanup() {
         dbHelper.deleteTestPassengers("ext-it-passenger-1", "ext-it-passenger-2");
-        dbHelper.deleteTestAdmins("ext-it-admin-1", "ext-it-admin-2");
     }
 
     // ───────────────────────────────────────────────────────────────
-    // UserRegisteredEvent → PASSENGER
+    // UserCreatedEvent → PASSENGER
     // ───────────────────────────────────────────────────────────────
 
     @Test
-    void shouldCreatePassengerWhenUserRegisteredEventPublished() {
-        String event = buildUserRegisteredEventJson(
-            "ext-it-passenger-1", "passenger-it@example.com", "PASSENGER", "STANDARD");
+    void shouldCreatePassengerWhenUserCreatedEventPublished() {
+        String event = buildUserCreatedEventJson(
+            "ext-it-passenger-1", "passenger-it@example.com", "PASSENGER", List.of("basic"));
 
-        eventBus.publish("identity.user.registered", event);
+        eventBus.publish("identity.user.created.v1", event);
 
         await().atMost(Duration.ofSeconds(5)).until(() ->
             dbHelper.findPassengerByExternalId("ext-it-passenger-1").isPresent());
@@ -51,11 +50,11 @@ class EventBusIntegrationTest {
     }
 
     @Test
-    void shouldNotCreatePassengerForAdminTypeEvent() {
-        String event = buildUserRegisteredEventJson(
-            "ext-it-admin-1", "admin-it@example.com", "ADMIN", "STANDARD");
+    void shouldNotCreatePassengerForAdminRoleEvent() {
+        String event = buildUserCreatedEventJson(
+            "ext-it-admin-1", "admin-it@example.com", "ADMIN", List.of("editor"));
 
-        eventBus.publish("identity.user.registered", event);
+        eventBus.publish("identity.user.created.v1", event);
 
         await().atMost(Duration.ofSeconds(3)).pollDelay(Duration.ofSeconds(1)).until(() ->
             dbHelper.findPassengerByExternalId("ext-it-admin-1").isEmpty());
@@ -63,45 +62,14 @@ class EventBusIntegrationTest {
 
     @Test
     void shouldSkipIdempotentlyWhenSamePassengerEventPublishedTwice() {
-        String event = buildUserRegisteredEventJson(
-            "ext-it-passenger-2", "idempotent-it@example.com", "PASSENGER", "STANDARD");
+        String event = buildUserCreatedEventJson(
+            "ext-it-passenger-2", "idempotent-it@example.com", "PASSENGER", List.of("basic"));
 
-        eventBus.publish("identity.user.registered", event);
-        eventBus.publish("identity.user.registered", event);
+        eventBus.publish("identity.user.created.v1", event);
+        eventBus.publish("identity.user.created.v1", event);
 
         await().atMost(Duration.ofSeconds(5)).until(() ->
             dbHelper.findPassengerByExternalId("ext-it-passenger-2").isPresent());
-    }
-
-    // ───────────────────────────────────────────────────────────────
-    // UserRegisteredEvent → ADMIN
-    // ───────────────────────────────────────────────────────────────
-
-    @Test
-    void shouldCreateAdminWhenUserRegisteredEventPublished() {
-        String event = buildUserRegisteredEventJson(
-            "ext-it-admin-2", "admin-it2@example.com", "ADMIN", "STANDARD");
-
-        eventBus.publish("identity.user.registered", event);
-
-        await().atMost(Duration.ofSeconds(5)).until(() ->
-            dbHelper.findAdminByExternalId("ext-it-admin-2") != null);
-
-        AdminEntity admin = dbHelper.findAdminByExternalId("ext-it-admin-2");
-        assertNotNull(admin);
-        assertEquals("admin-it2@example.com", admin.getEmail().value());
-        assertEquals("ext-it-admin-2", admin.getExternalId());
-    }
-
-    @Test
-    void shouldNotCreateAdminForPassengerTypeEvent() {
-        String event = buildUserRegisteredEventJson(
-            "ext-it-passenger-2", "passenger-it2@example.com", "PASSENGER", "STANDARD");
-
-        eventBus.publish("identity.user.registered", event);
-
-        await().atMost(Duration.ofSeconds(3)).pollDelay(Duration.ofSeconds(1)).until(() ->
-            dbHelper.findAdminByExternalId("ext-it-passenger-2") == null);
     }
 
     // ───────────────────────────────────────────────────────────────
@@ -110,15 +78,15 @@ class EventBusIntegrationTest {
 
     @Test
     void shouldDeletePassengerWhenUserDeletedEventPublished() {
-        String registerEvent = buildUserRegisteredEventJson(
-            "ext-it-passenger-1", "delete-it@example.com", "PASSENGER", "STANDARD");
-        eventBus.publish("identity.user.registered", registerEvent);
+        String registerEvent = buildUserCreatedEventJson(
+            "ext-it-passenger-1", "delete-it@example.com", "PASSENGER", List.of("basic"));
+        eventBus.publish("identity.user.created.v1", registerEvent);
 
         await().atMost(Duration.ofSeconds(5)).until(() ->
             dbHelper.findPassengerByExternalId("ext-it-passenger-1").isPresent());
 
         String deleteEvent = buildUserDeletedEventJson("ext-it-passenger-1");
-        eventBus.publish("identity.user.deleted", deleteEvent);
+        eventBus.publish("identity.user.deleted.v1", deleteEvent);
 
         await().atMost(Duration.ofSeconds(5)).until(() ->
             dbHelper.findPassengerByExternalId("ext-it-passenger-1").isEmpty());
@@ -128,15 +96,15 @@ class EventBusIntegrationTest {
     // Helpers
     // ───────────────────────────────────────────────────────────────
 
-    private String buildUserRegisteredEventJson(String aggregateId, String email, String type, String subType) {
+    private String buildUserCreatedEventJson(String aggregateId, String email, String userType, List<String> clientRoles) {
         return new JsonObject()
-            .put("eventType", "identity.user.registered.v1")
+            .put("eventType", "identity.user.created.v1")
             .put("aggregateType", "User")
             .put("aggregateId", aggregateId)
             .put("eventVersion", 1)
             .put("email", email)
-            .put("type", type)
-            .put("subType", subType)
+            .put("userType", userType)
+            .put("clientRoles", clientRoles)
             .put("correlationId", UUID.randomUUID().toString())
             .put("causationId", (String) null)
             .put("traceId", UUID.randomUUID().toString())

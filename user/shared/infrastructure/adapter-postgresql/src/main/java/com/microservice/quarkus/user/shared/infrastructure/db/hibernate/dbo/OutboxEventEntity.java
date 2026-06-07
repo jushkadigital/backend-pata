@@ -55,6 +55,9 @@ public class OutboxEventEntity {
   @Column(name = "tenant_id")
   private String tenantId;
 
+  @Column(name = "spec_version", length = 50)
+  private String specVersion;
+
   @Column(name = "event_payload", nullable = false, columnDefinition = "TEXT")
   private String eventPayload;
 

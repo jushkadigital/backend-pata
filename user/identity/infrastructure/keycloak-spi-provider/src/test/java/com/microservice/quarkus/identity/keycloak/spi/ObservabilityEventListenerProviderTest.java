@@ -13,6 +13,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.keycloak.events.Event;
 import org.keycloak.events.EventType;
 import org.keycloak.events.admin.AdminEvent;
+import org.keycloak.events.admin.AuthDetails;
 import org.keycloak.events.admin.OperationType;
 import org.keycloak.events.admin.ResourceType;
 import org.keycloak.models.AbstractKeycloakTransaction;
@@ -73,12 +74,22 @@ class ObservabilityEventListenerProviderTest {
     }
 
     private AdminEvent createAdminEvent() {
+        return createAdminEvent(OperationType.CREATE, ResourceType.USER, "users/new-user-123");
+    }
+
+    private AdminEvent createAdminEvent(OperationType operationType, ResourceType resourceType, String resourcePath) {
         AdminEvent event = new AdminEvent();
-        event.setOperationType(OperationType.CREATE);
-        event.setResourceType(ResourceType.USER);
+        event.setOperationType(operationType);
+        event.setResourceType(resourceType);
+        event.setResourcePath(resourcePath);
         event.setRealmId("test-realm");
         event.setTime(System.currentTimeMillis());
         event.setId("admin-event-123");
+        AuthDetails authDetails = new AuthDetails();
+        authDetails.setClientId("auth-client-uuid");
+        authDetails.setUserId("admin-user-456");
+        authDetails.setIpAddress("10.0.0.1");
+        event.setAuthDetails(authDetails);
         return event;
     }
 
@@ -99,7 +110,7 @@ class ObservabilityEventListenerProviderTest {
         assertEquals("session-456", span.getAttributes().get(io.opentelemetry.api.common.AttributeKey.stringKey("keycloak.session.id")));
         assertEquals("127.0.0.1", span.getAttributes().get(io.opentelemetry.api.common.AttributeKey.stringKey("keycloak.ip.address")));
 
-        Counter counter = provider.getMeterRegistry().find("keycloak.identity.user.registered.total").counter();
+        Counter counter = provider.getMeterRegistry().find("keycloak.identity.user.created.total").counter();
         assertNotNull(counter);
         assertEquals(1.0, counter.count());
 
@@ -107,20 +118,33 @@ class ObservabilityEventListenerProviderTest {
     }
 
     @Test
-    void onEvent_deleteAccount_createsSpan_andIncrementsCounter_andEnlistsWebhook() {
-        Event event = createEvent(EventType.DELETE_ACCOUNT);
+    void onEvent_adminDeleteUser_createsSpan_andIncrementsCounter_andEnlistsWebhook() {
+        AdminEvent event = createAdminEvent(OperationType.DELETE, ResourceType.USER, "users/deleted-user-789");
 
-        provider.onEvent(event);
+        provider.onEvent(event, false);
 
         List<SpanData> spans = otelTesting.getSpans();
         assertEquals(1, spans.size());
-        assertEquals("keycloak.event.delete_account", spans.get(0).getName());
+        assertEquals("keycloak.admin_event.delete", spans.get(0).getName());
 
         Counter counter = provider.getMeterRegistry().find("keycloak.identity.user.deleted.total").counter();
         assertNotNull(counter);
         assertEquals(1.0, counter.count());
 
         verify(transactionManager).enlistAfterCompletion(any(AbstractKeycloakTransaction.class));
+    }
+
+    @Test
+    void onEvent_adminDeleteNonUser_doesNotEnlistWebhook() {
+        AdminEvent event = createAdminEvent(OperationType.DELETE, ResourceType.CLIENT, "clients/some-client");
+
+        provider.onEvent(event, false);
+
+        Counter counter = provider.getMeterRegistry().find("keycloak.identity.user.deleted.total").counter();
+        assertNotNull(counter);
+        assertEquals(0.0, counter.count());
+
+        verify(transactionManager, never()).enlistAfterCompletion(any(AbstractKeycloakTransaction.class));
     }
 
     @Test
@@ -292,7 +316,7 @@ class ObservabilityEventListenerProviderTest {
     }
 
     @Test
-    void webhook_payloadMatchesExpectedJsonStructure() throws Exception {
+    void webhook_adminDeleteUser_payloadMatchesExpectedJsonStructure() throws Exception {
         AtomicReference<String> requestBody = new AtomicReference<>();
 
         HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
@@ -309,14 +333,10 @@ class ObservabilityEventListenerProviderTest {
             String webhookUrl = "http://localhost:" + server.getAddress().getPort() + "/webhook";
             ObservabilityEventListenerProvider webhookProvider = new ObservabilityEventListenerProvider(session, webhookUrl);
 
-            Event event = createEvent(EventType.DELETE_ACCOUNT);
-            Map<String, String> details = new HashMap<>();
-            details.put("reason", "user_request");
-            event.setDetails(details);
-            event.setError(null);
+            AdminEvent event = createAdminEvent(OperationType.DELETE, ResourceType.USER, "users/deleted-user-789");
 
             org.mockito.ArgumentCaptor<AbstractKeycloakTransaction> txCaptor = org.mockito.ArgumentCaptor.forClass(AbstractKeycloakTransaction.class);
-            webhookProvider.onEvent(event);
+            webhookProvider.onEvent(event, false);
             verify(transactionManager).enlistAfterCompletion(txCaptor.capture());
             txCaptor.getValue().begin();
             txCaptor.getValue().commit();
@@ -325,20 +345,14 @@ class ObservabilityEventListenerProviderTest {
 
             String body = requestBody.get();
             assertNotNull(body);
-            // Verify it's valid JSON with expected fields
             com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
             Map<?, ?> payload = mapper.readValue(body, Map.class);
-            assertEquals("event-789", payload.get("id"));
-            assertEquals("DELETE_ACCOUNT", payload.get("type"));
+            assertEquals("DELETE", payload.get("type"));
+            assertEquals("deleted-user-789", payload.get("userId"));
             assertEquals("test-realm", payload.get("realmId"));
-            assertEquals("test-client", payload.get("clientId"));
-            assertEquals("user-123", payload.get("userId"));
-            assertEquals("127.0.0.1", payload.get("ipAddress"));
+            assertEquals("auth-client-uuid", payload.get("clientId"));
+            assertEquals("10.0.0.1", payload.get("ipAddress"));
             assertNotNull(payload.get("time"));
-            @SuppressWarnings("unchecked")
-            Map<String, String> detailMap = (Map<String, String>) payload.get("details");
-            assertNotNull(detailMap);
-            assertEquals("user_request", detailMap.get("reason"));
         } finally {
             server.stop(0);
         }

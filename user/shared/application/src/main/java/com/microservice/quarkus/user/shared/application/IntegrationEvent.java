@@ -17,4 +17,5 @@ public interface IntegrationEvent {
     String actorId();
     String tenantId();
     Instant occurredOn();
+    String specVersion();
 }

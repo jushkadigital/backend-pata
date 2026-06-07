@@ -60,22 +60,22 @@ quarkus:
     otel:
       exporter:
         otlp:
-          endpoint: http://otel-collector:4317
+          endpoint: ${OTEL_EXPORTER_ENDPOINT:http://otel-collector:4317}
           protocol: grpc
     micrometer:
       export:
         otlp:
-          enabled: true
-          endpoint: http://otel-collector:4317
+          enabled: ${OTEL_METRICS_ENABLED:true}
+          endpoint: ${OTEL_EXPORTER_ENDPOINT:http://otel-collector:4317}
           step: 60s
   vault:
-    url: http://localhost:8200
+    url: ${VAULT_URL:http://localhost:8200}
 
     # vault authentication
     authentication:
       userpass:
-        username: bob
-        password: sinclair
+        username: ${VAULT_USERNAME}
+        password: ${VAULT_PASSWORD}
 
     # path within the kv secret engine where is located the vault-quickstart secret configuration
     secret-config-kv-path: secret/myapp/config

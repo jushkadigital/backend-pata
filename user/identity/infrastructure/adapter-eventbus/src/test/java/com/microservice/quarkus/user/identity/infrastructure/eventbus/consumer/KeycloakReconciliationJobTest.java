@@ -8,7 +8,6 @@ import com.microservice.quarkus.user.identity.application.api.KeycloakProvider;
 import com.microservice.quarkus.user.identity.application.dto.KeycloakUserDTO;
 import com.microservice.quarkus.user.identity.application.dto.SyncStatus;
 import com.microservice.quarkus.user.identity.application.dto.UserSyncRecord;
-import com.microservice.quarkus.user.identity.application.dto.UserType;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -78,7 +77,8 @@ class KeycloakReconciliationJobTest {
         verify(syncRepository).save(argThat(record ->
             record.email().equals(email) &&
             record.externalId().equals(externalId) &&
-            record.type() == UserType.PASSENGER &&
+            record.userType().equals("PASSENGER") &&
+            record.roles().equals(List.of("basic")) &&
             record.syncStatus() == SyncStatus.PENDING
         ));
         verify(reconciledCounter).increment(1.0d);
@@ -92,7 +92,7 @@ class KeycloakReconciliationJobTest {
         KeycloakUserDTO kcUser = new KeycloakUserDTO(externalId, email, externalId, "PASSENGER");
 
         UserSyncRecord existingRecord = new UserSyncRecord(
-            "id-1", email, externalId, UserType.PASSENGER, SyncStatus.SYNCED,
+            "id-1", email, externalId, "PASSENGER", List.of("basic"), SyncStatus.SYNCED,
             Instant.now(), Instant.now()
         );
 
@@ -115,7 +115,7 @@ class KeycloakReconciliationJobTest {
         KeycloakUserDTO kcUser = new KeycloakUserDTO(externalId, email, externalId, "PASSENGER");
 
         UserSyncRecord pendingRecord = new UserSyncRecord(
-            "id-2", email, null, UserType.PASSENGER, SyncStatus.PENDING,
+            "id-2", email, null, "PASSENGER", List.of("basic"), SyncStatus.PENDING,
             Instant.now(), Instant.now()
         );
 
@@ -143,7 +143,7 @@ class KeycloakReconciliationJobTest {
         KeycloakUserDTO kcUser = new KeycloakUserDTO(externalId, email, externalId, "PASSENGER");
 
         UserSyncRecord existingRecord = new UserSyncRecord(
-            "id-1", email, externalId, UserType.PASSENGER, SyncStatus.SYNCED,
+            "id-1", email, externalId, "PASSENGER", List.of("basic"), SyncStatus.SYNCED,
             Instant.now(), Instant.now()
         );
 
@@ -202,7 +202,8 @@ class KeycloakReconciliationJobTest {
         verify(syncRepository).save(argThat(record ->
             record.email().equals(email) &&
             record.externalId().equals(externalId) &&
-            record.type() == UserType.PASSENGER &&
+            record.userType().equals("PASSENGER") &&
+            record.roles().equals(List.of("basic")) &&
             record.syncStatus() == SyncStatus.PENDING
         ));
         verify(reconciledCounter).increment(1.0d);
@@ -234,7 +235,7 @@ class KeycloakReconciliationJobTest {
         KeycloakUserDTO kcUser2 = new KeycloakUserDTO("ext-2", "existing@example.com", "ext-2", "PASSENGER");
 
         UserSyncRecord existingRecord = new UserSyncRecord(
-            "id-2", "existing@example.com", "ext-2", UserType.PASSENGER, SyncStatus.SYNCED,
+            "id-2", "existing@example.com", "ext-2", "PASSENGER", List.of("basic"), SyncStatus.SYNCED,
             Instant.now(), Instant.now()
         );
 

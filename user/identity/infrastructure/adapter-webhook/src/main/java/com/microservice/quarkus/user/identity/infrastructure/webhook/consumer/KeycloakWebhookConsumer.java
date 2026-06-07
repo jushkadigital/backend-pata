@@ -6,20 +6,27 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 import java.util.Map;
+import java.util.Set;
 
 import org.jboss.logging.Logger;
 
 import com.microservice.quarkus.user.identity.application.api.ClientIdentityProvider;
+import com.microservice.quarkus.user.identity.application.api.GroupIdentityProvider;
 import com.microservice.quarkus.user.identity.application.api.IdentitySyncRepository;
 import com.microservice.quarkus.user.identity.application.api.KeycloakProvider;
+import com.microservice.quarkus.user.identity.application.api.RoleIdentityProvider;
 import com.microservice.quarkus.user.identity.application.dto.CreateUserCommand;
 import com.microservice.quarkus.user.identity.application.dto.KeycloakUserDTO;
 import com.microservice.quarkus.user.identity.application.dto.SyncStatus;
 import com.microservice.quarkus.user.identity.application.dto.UserSyncRecord;
+import com.microservice.quarkus.user.identity.application.dto.UserType;
 import com.microservice.quarkus.user.identity.application.service.UserService;
 import com.microservice.quarkus.user.identity.infrastructure.webhook.event.WebhookKeycloakPayload;
 import com.microservice.quarkus.user.identity.infrastructure.webhook.event.WebhookPayloadPayload;
+import com.microservice.quarkus.user.shared.application.outbox.IdempotencyStore;
+import com.microservice.quarkus.user.shared.application.outbox.TraceContextProvider;
 import com.microservice.quarkus.user.shared.infrastructure.eventbus.CorrelationIdInterceptor;
+
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanContext;
 import io.opentelemetry.api.trace.TraceFlags;
@@ -34,15 +41,35 @@ public class KeycloakWebhookConsumer {
 
   private static final Logger LOG = Logger.getLogger(KeycloakWebhookConsumer.class);
 
-  private static final Map<String, String> CLI_NAME_DICT = Map.of(
-      "dashboard-client", "ADMIN",
-      "frontend-client", "PASSENGER");
+  private static final Map<String, Set<String>> CLIENT_DEFAULT_ROLES = Map.of(
+      "dashboard-client", Set.of("editor"),
+      "frontend-client", Set.of("basic"));
+
+  private static final Map<String, String> COMPOSITE_ROLE_TO_GROUP = Map.of(
+      "super-admin", "admins",
+      "admin", "admins",
+      "editor", "admins",
+      "premium", "passengers",
+      "standard", "passengers",
+      "basic", "passengers");
+
+  private static final Map<String, String> COMPOSITE_ROLE_TO_CLIENT_ID = Map.of(
+      "super-admin", "dashboard-client",
+      "admin", "dashboard-client",
+      "editor", "dashboard-client",
+      "premium", "frontend-client",
+      "standard", "frontend-client",
+      "basic", "frontend-client");
 
   private final ClientIdentityProvider clientService;
   private final KeycloakProvider keycloakProvider;
   private final UserService userService;
   private final CorrelationIdInterceptor correlationIdInterceptor;
   private final IdentitySyncRepository syncRepository;
+  private final IdempotencyStore idempotencyStore;
+  private final GroupIdentityProvider groupIdentityProvider;
+  private final RoleIdentityProvider roleIdentityProvider;
+  private final TraceContextProvider traceContextProvider;
 
   @Inject Tracer tracer;
 
@@ -51,12 +78,20 @@ public class KeycloakWebhookConsumer {
                                   KeycloakProvider keycloakProvider,
                                   UserService userService,
                                   CorrelationIdInterceptor correlationIdInterceptor,
-                                  IdentitySyncRepository syncRepository) {
+                                  IdentitySyncRepository syncRepository,
+                                  IdempotencyStore idempotencyStore,
+                                  GroupIdentityProvider groupIdentityProvider,
+                                  RoleIdentityProvider roleIdentityProvider,
+                                  TraceContextProvider traceContextProvider) {
     this.clientService = clientService;
     this.keycloakProvider = keycloakProvider;
     this.userService = userService;
     this.correlationIdInterceptor = correlationIdInterceptor;
     this.syncRepository = syncRepository;
+    this.idempotencyStore = idempotencyStore;
+    this.groupIdentityProvider = groupIdentityProvider;
+    this.roleIdentityProvider = roleIdentityProvider;
+    this.traceContextProvider = traceContextProvider;
   }
 
   @ConsumeEvent("identity.webhook.keycloak")
@@ -67,8 +102,6 @@ public class KeycloakWebhookConsumer {
 
     if (payload.traceParent() != null) {
         MDC.put("traceParent", payload.traceParent());
-        // Extract traceId from traceparent header (format: version-traceId-spanId-flags)
-        // The traceId is the second segment (32 hex chars)
         String[] parts = payload.traceParent().split("-");
         if (parts.length >= 2) {
             MDC.put("traceId", parts[1]);
@@ -89,26 +122,40 @@ public class KeycloakWebhookConsumer {
     }
 
     try (Scope scope = span.makeCurrent()) {
-      // Idempotency check: skip if user is already SYNCED or PENDING
-      UserSyncRecord existingRecord = syncRepository.findByExternalId(payload.userId());
-      if (existingRecord == null) {
-        existingRecord = syncRepository.findByEmail(payload.userId());
-      }
-      if (existingRecord != null && (SyncStatus.SYNCED.equals(existingRecord.syncStatus()) ||
-          SyncStatus.PENDING.equals(existingRecord.syncStatus()))) {
-        LOG.infof("Skipping webhook event for user %s - already %s", payload.userId(), existingRecord.syncStatus());
+      String idempotencyKey = payload.userId() + ":" + payload.eventType();
+      if (!idempotencyStore.tryAcquire(idempotencyKey, "identity-webhook-inbound")) {
+        LOG.infof("Idempotent skip — webhook already processed: user=%s type=%s",
+            payload.userId(), payload.eventType());
         return;
       }
 
       if ("REGISTER".equals(payload.eventType())) {
+        UserSyncRecord existingRecord = syncRepository.findByExternalId(payload.userId());
+        if (existingRecord == null) {
+          existingRecord = syncRepository.findByEmail(payload.userId());
+        }
+        if (existingRecord != null && (SyncStatus.SYNCED.equals(existingRecord.syncStatus()) ||
+            SyncStatus.PENDING.equals(existingRecord.syncStatus()))) {
+          LOG.infof("Skipping REGISTER webhook event for user %s - already %s", payload.userId(), existingRecord.syncStatus());
+          return;
+        }
         KeycloakUserDTO tempUser = keycloakProvider.getUserById(payload.userId());
+        Set<String> roles = CLIENT_DEFAULT_ROLES.get(clientService.getClientNameById(payload.clientId()));
+        if (roles == null) {
+          roles = Set.of("basic");
+        }
+        String userType = UserType.fromCompositeRoles(roles).name();
         CreateUserCommand command = CreateUserCommand.fromWebhook(
             tempUser.email(),
             tempUser.externalId(),
-            CLI_NAME_DICT.get(clientService.getClientNameById(payload.clientId())));
+            userType,
+            roles);
 
         String correlationId = correlationIdInterceptor.getOrCreateCorrelationId();
-        userService.register(command, correlationId);
+        String externalId = userService.register(command, correlationId);
+        if (externalId != null) {
+          assignGroupsAndRoles(externalId, roles);
+        }
         LOG.info("Sincronización exitosa.");
       } else if ("DELETE".equals(payload.eventType())) {
         String correlationId = correlationIdInterceptor.getOrCreateCorrelationId();
@@ -134,11 +181,24 @@ public class KeycloakWebhookConsumer {
     Span span = tracer.spanBuilder("webhook.onPayloadEvent").startSpan();
 
     try (Scope scope = span.makeCurrent()) {
-      CreateUserCommand command = CreateUserCommand.fromWebhook2(payload.email(), payload.password(),
-          CLI_NAME_DICT.get(clientService.getClientNameById(payload.clientId())), payload.type());
+      Set<String> roles = CLIENT_DEFAULT_ROLES.get(clientService.getClientNameById(payload.clientId()));
+      if (roles == null) {
+        roles = Set.of("basic");
+      }
+
+      String specificRole = payload.role();
+      if (specificRole != null && !specificRole.isBlank()) {
+        roles = Set.of(specificRole);
+      }
+
+      String userType = UserType.fromCompositeRoles(roles).name();
+      CreateUserCommand command = CreateUserCommand.fromWebhook2(payload.email(), payload.password(), userType, roles);
 
       String correlationId = correlationIdInterceptor.getOrCreateCorrelationId();
-      userService.register(command, correlationId);
+      String externalId = userService.register(command, correlationId);
+      if (externalId != null) {
+        assignGroupsAndRoles(externalId, roles);
+      }
       LOG.info("Sincronización exitosa.");
     } catch (Exception e) {
       span.recordException(e);
@@ -146,6 +206,31 @@ public class KeycloakWebhookConsumer {
       throw e;
     } finally {
       span.end();
+    }
+  }
+
+  private void assignGroupsAndRoles(String externalId, Set<String> roles) {
+    for (String role : roles) {
+      String groupPath = COMPOSITE_ROLE_TO_GROUP.get(role);
+      if (groupPath != null) {
+        String groupId = groupIdentityProvider.findGroupByPath(groupPath);
+        if (groupId != null) {
+          groupIdentityProvider.assignUserToGroup(externalId, groupId);
+          LOG.infof("Usuario %s asignado al grupo %s", externalId, groupPath);
+        } else {
+          LOG.warnf("Grupo no encontrado: %s", groupPath);
+        }
+      }
+
+      String targetClientId = COMPOSITE_ROLE_TO_CLIENT_ID.get(role);
+      if (targetClientId != null) {
+        try {
+          roleIdentityProvider.assignClientRoleToUser(externalId, targetClientId, role);
+          LOG.infof("Rol '%s' asignado al usuario %s", role, externalId);
+        } catch (Exception e) {
+          LOG.warnf("Error asignando rol '%s' al usuario %s: %s", role, externalId, e.getMessage());
+        }
+      }
     }
   }
 

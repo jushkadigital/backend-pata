@@ -17,6 +17,8 @@ import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
+
 @ApplicationScoped
 public class KeycloakReconciliationJob {
 
@@ -65,8 +67,9 @@ public class KeycloakReconciliationJob {
                     }
 
                     // True orphan — create PENDING record, processor will complete it
-                    UserType type = guessUserType(kcUser);
-                    UserSyncRecord record = UserSyncRecord.createNew(kcUser.email(), type)
+                    List<String> roles = guessUserRoles(kcUser);
+                    String userType = UserType.fromCompositeRoles(new java.util.HashSet<>(roles)).name();
+                    UserSyncRecord record = UserSyncRecord.createNew(kcUser.email(), userType, roles)
                         .withExternalId(kcUser.externalId())
                         .withSyncStatus(SyncStatus.PENDING);
                     syncRepository.save(record);
@@ -87,8 +90,7 @@ public class KeycloakReconciliationJob {
         }
     }
 
-    private UserType guessUserType(KeycloakUserDTO kcUser) {
-        // Default to PASSENGER if we can't determine — processor/consumers will handle
-        return UserType.PASSENGER;
+    private List<String> guessUserRoles(KeycloakUserDTO kcUser) {
+        return List.of("basic");
     }
 }

@@ -3,7 +3,6 @@ package com.microservice.quarkus.user.identity.infrastructure.db.hibernate.repos
 import com.microservice.quarkus.user.identity.application.api.IdentitySyncRepository;
 import com.microservice.quarkus.user.identity.application.dto.SyncStatus;
 import com.microservice.quarkus.user.identity.application.dto.UserSyncRecord;
-import com.microservice.quarkus.user.identity.application.dto.UserType;
 import com.microservice.quarkus.user.identity.infrastructure.db.hibernate.entity.UserSyncEntity;
 import com.microservice.quarkus.user.identity.infrastructure.db.hibernate.mapper.UserSyncEntityMapper;
 import com.microservice.quarkus.user.shared.domain.EmailAddress;
@@ -70,7 +69,8 @@ public class UserSyncPanacheRepository implements IdentitySyncRepository {
   private void updateEntity(UserSyncEntity entity, UserSyncRecord record) {
     entity.setEmail(new EmailAddress(record.email()));
     entity.setExternalId(record.externalId());
-    entity.setType(record.type());
+    entity.setUserType(record.userType());
+    entity.setRoles(mapper.rolesToString(record.roles()));
     entity.setSyncStatus(record.syncStatus());
     entity.setUpdatedAt(record.updatedAt());
     entity.setRetryCount(record.retryCount());

@@ -6,6 +6,7 @@ import static org.mockito.Mockito.*;
 
 import com.microservice.quarkus.user.passenger.application.service.PassengerService;
 import com.microservice.quarkus.user.passenger.infrastructure.eventbus.acl.UserDeletedEventDTO;
+import com.microservice.quarkus.user.shared.application.outbox.IdempotencyStore;
 
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanBuilder;
@@ -30,6 +31,9 @@ class UserDeletedListenerTest {
     PassengerService passengerService;
 
     @Mock
+    IdempotencyStore idempotencyStore;
+
+    @Mock
     Tracer tracer;
 
     @Mock
@@ -46,7 +50,8 @@ class UserDeletedListenerTest {
         lenient().when(spanBuilder.setParent(any())).thenReturn(spanBuilder);
         lenient().when(spanBuilder.startSpan()).thenReturn(span);
         lenient().when(span.makeCurrent()).thenReturn(scope);
-        UserDeletedListener listener = new UserDeletedListener(passengerService);
+        lenient().when(idempotencyStore.tryAcquire(anyString(), anyString())).thenReturn(true);
+        UserDeletedListener listener = new UserDeletedListener(passengerService, idempotencyStore);
         listener.tracer = tracer;
         return listener;
     }
@@ -56,7 +61,7 @@ class UserDeletedListenerTest {
         String externalId = UUID.randomUUID().toString();
         UserDeletedEventDTO dto = new UserDeletedEventDTO(externalId, "User", "identity.user.deleted.v1", 1,
             "corr-1", null, "trace-1", "span-1", "user-service", null, null,
-            UUID.randomUUID(), java.time.Instant.now());
+            UUID.randomUUID(), java.time.Instant.now(), "user@example.com", "PASSENGER");
         String event = JsonObject.mapFrom(dto).encode();
 
         createListener().onUserDeleted(event);
@@ -69,7 +74,7 @@ class UserDeletedListenerTest {
         String externalId = UUID.randomUUID().toString();
         UserDeletedEventDTO dto = new UserDeletedEventDTO(externalId, "User", "identity.user.deleted.v1", 1,
             "corr-2", null, "trace-2", "span-2", "user-service", null, null,
-            UUID.randomUUID(), java.time.Instant.now());
+            UUID.randomUUID(), java.time.Instant.now(), "fail@example.com", "PASSENGER");
         String event = JsonObject.mapFrom(dto).encode();
 
         doThrow(new RuntimeException("DB down")).when(passengerService).deleteByExternalId(anyString());

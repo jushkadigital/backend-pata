@@ -3,11 +3,10 @@ package com.microservice.quarkus.user.identity.application.service;
 import com.microservice.quarkus.user.identity.application.api.IdentitySyncRepository;
 import com.microservice.quarkus.user.identity.application.dto.SyncStatus;
 import com.microservice.quarkus.user.identity.application.dto.UserSyncRecord;
-import com.microservice.quarkus.user.identity.application.dto.UserType;
+import com.microservice.quarkus.user.identity.application.event.IdentityUserCreated;
 import com.microservice.quarkus.user.identity.application.event.IdentityUserDeleted;
-import com.microservice.quarkus.user.identity.application.event.IdentityUserRegistered;
+import com.microservice.quarkus.user.identity.application.event.UserCreatedEvent;
 import com.microservice.quarkus.user.identity.application.event.UserDeletedEvent;
-import com.microservice.quarkus.user.identity.application.event.UserRegisteredEvent;
 import com.microservice.quarkus.user.shared.application.NotificationEvent;
 import com.microservice.quarkus.user.shared.application.outbox.EventMetadata;
 import com.microservice.quarkus.user.shared.application.outbox.EventScope;
@@ -22,6 +21,8 @@ import io.vertx.core.json.JsonObject;
 import io.opentelemetry.instrumentation.annotations.WithSpan;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
+
+import java.util.List;
 
 @ApplicationScoped
 public class IdentityPersistenceService {
@@ -50,18 +51,18 @@ public class IdentityPersistenceService {
   }
 
   @Transactional
-  public void persistFailedSync(String email, UserType type) {
-    UserSyncRecord record = UserSyncRecord.createNew(email, type)
+  public void persistFailedSync(String email, String userType, List<String> roles) {
+    UserSyncRecord record = UserSyncRecord.createNew(email, userType, roles)
         .withSyncStatus(SyncStatus.FAILED);
     syncRepository.save(record);
   }
 
   @WithSpan("identity.user.persistPending")
   @Transactional
-  public void persistPendingSync(String email, UserType type, String externalId,
-                                  String correlationId, String causationId,
-                                  EventMetadata traceMeta, String actorId) {
-    UserSyncRecord record = UserSyncRecord.createNew(email, type)
+  public void persistPendingSync(String email, String userType, List<String> roles, String externalId,
+                                    String correlationId, String causationId,
+                                    EventMetadata traceMeta, String actorId) {
+    UserSyncRecord record = UserSyncRecord.createNew(email, userType, roles)
         .withExternalId(externalId)
         .withSyncStatus(SyncStatus.PENDING);
     syncRepository.save(record);
@@ -78,8 +79,8 @@ public class IdentityPersistenceService {
     sagaRepository.save(saga);
     sagaMetrics.recordStarted();
 
-    IdentityUserRegistered domainEvent = new IdentityUserRegistered(
-        record.externalId(), record.email(), record.type().name(), null);
+    IdentityUserCreated domainEvent = new IdentityUserCreated(
+        record.externalId(), record.email(), record.userType(), record.roles());
 
     publishIntegrationEvent(domainEvent, record.id(), null, traceContextProvider.current(), null);
     publishNotificationEvent(domainEvent, record.id(), null, traceContextProvider.current(), null);
@@ -88,11 +89,11 @@ public class IdentityPersistenceService {
 
   @WithSpan("identity.user.persist")
   @Transactional
-  public void persistSyncAndOutbox(String email, UserType type, String externalId,
-                                    IdentityUserRegistered domainEvent,
-                                    String correlationId, String causationId,
-                                    EventMetadata traceMeta, String actorId) {
-    UserSyncRecord record = UserSyncRecord.createNew(email, type)
+  public void persistSyncAndOutbox(String email, String userType, List<String> roles, String externalId,
+                                     IdentityUserCreated domainEvent,
+                                     String correlationId, String causationId,
+                                     EventMetadata traceMeta, String actorId) {
+    UserSyncRecord record = UserSyncRecord.createNew(email, userType, roles)
         .withExternalId(externalId)
         .withSyncStatus(SyncStatus.SYNCED);
     syncRepository.save(record);
@@ -107,11 +108,11 @@ public class IdentityPersistenceService {
     identityMetrics.recordRegistered();
   }
 
-  private void publishIntegrationEvent(IdentityUserRegistered domainEvent,
+  private void publishIntegrationEvent(IdentityUserCreated domainEvent,
                                        String correlationId, String causationId,
                                        EventMetadata traceMeta, String actorId) {
-    UserRegisteredEvent event = new UserRegisteredEvent(
-        domainEvent.externalId(), domainEvent.email(), domainEvent.userType(), domainEvent.userSubType(),
+    UserCreatedEvent event = UserCreatedEvent.v1(
+        domainEvent.externalId(), domainEvent.email(), domainEvent.userType(), domainEvent.roles(),
         correlationId, causationId, traceMeta.traceId(), traceMeta.spanId(),
         PRODUCER, actorId, null);
 
@@ -127,23 +128,24 @@ public class IdentityPersistenceService {
         PRODUCER,
         actorId,
         null,
+        event.specVersion(),
         JsonObject.mapFrom(event).encode(),
         EventScope.BOTH,
         event.occurredOn());
     outboxEventRepository.save(outboxEvent);
   }
 
-  private void publishNotificationEvent(IdentityUserRegistered domainEvent,
-                                        String correlationId, String causationId,
-                                        EventMetadata traceMeta, String actorId) {
-    UserRegisteredEvent integrationEvent = new UserRegisteredEvent(
-        domainEvent.externalId(), domainEvent.email(), domainEvent.userType(), domainEvent.userSubType(),
+  private void publishNotificationEvent(IdentityUserCreated domainEvent,
+                                          String correlationId, String causationId,
+                                          EventMetadata traceMeta, String actorId) {
+    UserCreatedEvent integrationEvent = UserCreatedEvent.v1(
+        domainEvent.externalId(), domainEvent.email(), domainEvent.userType(), domainEvent.roles(),
         correlationId, causationId, traceMeta.traceId(), traceMeta.spanId(),
         PRODUCER, actorId, null);
 
     NotificationEvent notification = NotificationEvent.from(integrationEvent, domainEvent.externalId(), integrationEvent.aggregateType());
     OutboxEvent notificationOutbox = OutboxEvent.create(
-        "notification.identity.user.registered.v1",
+        "notification.identity.user.created.v1",
         notification.eventVersion(),
         notification.aggregateType(),
         domainEvent.externalId(),
@@ -154,6 +156,7 @@ public class IdentityPersistenceService {
         PRODUCER,
         actorId,
         null,
+        integrationEvent.specVersion(),
         JsonObject.mapFrom(notification).encode(),
         EventScope.EXTERNAL_ONLY,
         domainEvent.occurredOn());
@@ -163,12 +166,16 @@ public class IdentityPersistenceService {
   @WithSpan("identity.user.delete-persist")
   @Transactional
   public void deleteSyncRecord(String externalId, String correlationId) {
+    UserSyncRecord record = syncRepository.findByExternalId(externalId);
+    String email = record != null ? record.email() : null;
+    String userType = record != null ? record.userType() : null;
+
     syncRepository.deleteByExternalId(externalId);
 
     EventMetadata traceMeta = traceContextProvider.current();
-    UserDeletedEvent event = new UserDeletedEvent(
+    UserDeletedEvent event = UserDeletedEvent.v1(
         externalId, correlationId, null, traceMeta.traceId(), traceMeta.spanId(),
-        PRODUCER, null, null);
+        PRODUCER, null, null, email, userType);
 
     OutboxEvent outboxEvent = OutboxEvent.create(
         event.eventType(),
@@ -182,6 +189,7 @@ public class IdentityPersistenceService {
         PRODUCER,
         null,
         null,
+        event.specVersion(),
         JsonObject.mapFrom(event).encode(),
         EventScope.BOTH,
         event.occurredOn());

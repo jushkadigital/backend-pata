@@ -1,0 +1,578 @@
+asyncapi: '2.6.0'
+info:
+  title: User Bounded Context - Event Contracts
+  version: '1.0.0'
+  description: |
+    AsyncAPI specification for all event-driven communication in the User Bounded Context.
+
+    ## Broker: RabbitMQ
+    All external events are published via RabbitMQ using topic exchanges.
+    The Outbox pattern ensures at-least-once delivery with idempotent consumers.
+
+    ## Internal: Vert.x EventBus
+    In-process events flow through the Vert.x EventBus for synchronous dispatch
+    within the Quarkus application.
+
+    ## Topology
+    ```
+    ┌──────────────────────────────────────────────────────────────────┐
+    │  Exchange: {domain}.events (topic, durable)                      │
+    │  ├── Queue: {domain}.events.queue      → main consumers         │
+    │  ├── Queue: {domain}.events.retry.queue → TTL=60s, DLX back     │
+    │  └── DLX:   {domain}.events.dlx (fanout)                       │
+    │      └── Queue: {domain}.events.dlq     → dead letter            │
+    │                                                                  │
+    │  Domains: identity, passenger, notification                      │
+    └──────────────────────────────────────────────────────────────────┘
+    ```
+
+    ## Event Envelope Headers (RabbitMQ)
+    All published messages carry these AMQP headers:
+    | Header            | Description                          |
+    |-------------------|--------------------------------------|
+    | x-event-id        | UUID, unique per event instance      |
+    | x-event-type      | Event type (e.g. identity.user.created.v1) |
+    | x-event-version   | Integer version of the event schema  |
+    | x-aggregate-type  | Aggregate root type (e.g. User)      |
+    | x-aggregate-id    | Aggregate root UUID                  |
+    | x-correlation-id  | Correlation UUID for tracing         |
+    | x-causation-id    | ID of the event that caused this one |
+    | x-trace-id        | OpenTelemetry trace ID               |
+    | x-span-id         | OpenTelemetry span ID                 |
+    | x-producer         | Service that produced the event      |
+    | x-actor-id        | ID of the user/system that triggered |
+    | x-tenant-id       | Tenant identifier                    |
+    | x-occurred-at     | ISO-8601 timestamp of occurrence     |
+    | x-spec-version    | Optional spec version                |
+
+  contact:
+    name: Platform Team
+    email: platform@example.com
+
+defaultContentType: application/json
+
+servers:
+  rabbitmq-prod:
+    url: rabbitmq:5672
+    protocol: amqp
+    description: Production RabbitMQ broker
+    bindings:
+      amqp:
+        host: rabbitmq
+        port: 5672
+        vhost: /
+  rabbitmq-dev:
+    url: localhost:5672
+    protocol: amqp
+    description: Development RabbitMQ broker
+    bindings:
+      amqp:
+        host: localhost
+        port: 5672
+        vhost: /
+
+channels:
+  # ─── Identity Events ─────────────────────────────────────
+  identity.user.created.v1:
+    description: |
+      Published when a new user is registered in the Identity module.
+      Consumers filter by userType field:
+      - Passenger module processes events where userType=PASSENGER
+      - Notification module processes all user created events
+    publish:
+      operationId: publishIdentityUserCreated
+      summary: Publish user created event
+      message:
+        $ref: '#/components/messages/UserCreatedEvent'
+    subscribe:
+      operationId: subscribeIdentityUserCreated
+      summary: Consume user created event
+      message:
+        $ref: '#/components/messages/UserCreatedEvent'
+      bindings:
+        amqp:
+          exchange:
+            name: identity.events
+            type: topic
+            durable: true
+          queue:
+            name: identity.events.queue
+            durable: true
+          routingKey: identity.user.created.v1
+
+  identity.user.deleted.v1:
+    description: |
+      Published when a user is deleted via the Keycloak Admin UI.
+      The Keycloak SPI (ObservabilityEventListenerProvider) intercepts AdminEvent
+      with operationType=DELETE and resourceType=USER, then sends a webhook
+      to the application. The webhook consumer triggers the full deletion cascade.
+      Consumers: Passenger module (deletes passenger record).
+    publish:
+      operationId: publishIdentityUserDeleted
+      summary: Publish user deleted event
+      message:
+        $ref: '#/components/messages/UserDeletedEvent'
+    subscribe:
+      operationId: subscribeIdentityUserDeleted
+      summary: Consume user deleted event
+      message:
+        $ref: '#/components/messages/UserDeletedEvent'
+      bindings:
+        amqp:
+          exchange:
+            name: identity.events
+            type: topic
+            durable: true
+          queue:
+            name: identity.events.queue
+            durable: true
+          routingKey: identity.user.deleted.v1
+
+  # ─── Passenger Events ────────────────────────────────────
+  passenger.created.v1:
+    description: |
+      Published when a passenger record is created in the Passenger module.
+      Consumers: Notification module (sends profile completion reminder).
+    publish:
+      operationId: publishPassengerCreated
+      summary: Publish passenger created event
+      message:
+        $ref: '#/components/messages/PassengerCreatedEvent'
+    subscribe:
+      operationId: subscribePassengerCreated
+      summary: Consume passenger created event
+      message:
+        $ref: '#/components/messages/PassengerCreatedEvent'
+      bindings:
+        amqp:
+          exchange:
+            name: passenger.events
+            type: topic
+            durable: true
+          queue:
+            name: passenger.events.queue
+            durable: true
+          routingKey: passenger.created.v1
+
+  # ─── Notification Events ─────────────────────────────────
+  notification.identity.user.created.v1:
+    description: |
+      Notification triggered when a new user is created.
+      Consumer: Notification service (email, push, etc.).
+    publish:
+      operationId: publishNotificationUserCreated
+      summary: Publish notification for user created
+      message:
+        $ref: '#/components/messages/NotificationUserCreatedEvent'
+    subscribe:
+      operationId: subscribeNotificationUserCreated
+      summary: Consume user created notification
+      message:
+        $ref: '#/components/messages/NotificationUserCreatedEvent'
+      bindings:
+        amqp:
+          exchange:
+            name: notification.events
+            type: topic
+            durable: true
+          queue:
+            name: notification.events.queue
+            durable: true
+          routingKey: notification.identity.user.created.v1
+
+  notification.passenger.created.v1:
+    description: |
+      Notification triggered when a passenger profile is created.
+      Consumer: Notification service (profile completion reminder).
+    publish:
+      operationId: publishNotificationPassengerCreated
+      summary: Publish notification for passenger created
+      message:
+        $ref: '#/components/messages/NotificationPassengerCreatedEvent'
+    subscribe:
+      operationId: subscribeNotificationPassengerCreated
+      summary: Consume passenger created notification
+      message:
+        $ref: '#/components/messages/NotificationPassengerCreatedEvent'
+      bindings:
+        amqp:
+          exchange:
+            name: notification.events
+            type: topic
+            durable: true
+          queue:
+            name: notification.events.queue
+            durable: true
+          routingKey: notification.passenger.created.v1
+
+  # ─── Internal Vert.x EventBus ────────────────────────────
+  identity.webhook.keycloak:
+    description: |
+      Internal Vert.x EventBus address.
+      Dispatched by KeycloakWebhookController after receiving a Keycloak admin event webhook.
+      Consumed by KeycloakWebhookConsumer for async user provisioning.
+    publish:
+      operationId: publishWebhookKeycloak
+      summary: Dispatch Keycloak webhook event internally
+      message:
+        $ref: '#/components/messages/WebhookKeycloakPayload'
+    subscribe:
+      operationId: subscribeWebhookKeycloak
+      summary: Process Keycloak webhook event
+      message:
+        $ref: '#/components/messages/WebhookKeycloakPayload'
+
+  identity.webhook.payload:
+    description: |
+      Internal Vert.x EventBus address.
+      Alternative path for direct user creation via payload webhook.
+      Consumed by KeycloakWebhookConsumer.processPayloadEvent().
+    publish:
+      operationId: publishWebhookPayload
+      summary: Dispatch payload webhook event internally
+      message:
+        $ref: '#/components/messages/WebhookPayloadPayload'
+    subscribe:
+      operationId: subscribeWebhookPayload
+      summary: Process payload webhook event
+      message:
+        $ref: '#/components/messages/WebhookPayloadPayload'
+
+  identity.get-client-config:
+    description: |
+      Internal Vert.x EventBus request-reply address.
+      Used to fetch Keycloak tenant configuration for a given client name.
+      Returns JsonObject with clientId, clientSecret, authServerUrl.
+    publish:
+      operationId: requestClientConfig
+      summary: Request tenant config for a client
+      message:
+        $ref: '#/components/messages/TenantConfigRequest'
+    subscribe:
+      operationId: handleClientConfig
+      summary: Return tenant config
+      message:
+        $ref: '#/components/messages/TenantConfigResponse'
+
+components:
+  messages:
+    # ─── Domain Events (RabbitMQ + Vert.x) ────────────────
+    UserCreatedEvent:
+      name: identity.user.created.v1
+      version: '1'
+      title: User Created Event
+      summary: Emitted when a new user registers via Keycloak or webhook.
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/UserCreatedEventPayload'
+      bindings:
+        amqp:
+          routingKey: identity.user.created.v1
+          exchange:
+            name: identity.events
+            type: topic
+
+    UserDeletedEvent:
+      name: identity.user.deleted.v1
+      version: '1'
+      title: User Deleted Event
+      summary: Emitted when a user is deleted via Keycloak Admin UI (AdminEvent DELETE+USER).
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/UserDeletedEventPayload'
+      bindings:
+        amqp:
+          routingKey: identity.user.deleted.v1
+          exchange:
+            name: identity.events
+            type: topic
+
+    PassengerCreatedEvent:
+      name: passenger.created.v1
+      version: '1'
+      title: Passenger Created Event
+      summary: Emitted when a passenger profile is created in the system.
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/EventEnvelopeBase'
+      bindings:
+        amqp:
+          routingKey: passenger.created.v1
+          exchange:
+            name: passenger.events
+            type: topic
+
+    NotificationUserCreatedEvent:
+      name: notification.identity.user.created.v1
+      version: '1'
+      title: Notification - User Created
+      summary: Notification event for user creation.
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/EventEnvelopeBase'
+      bindings:
+        amqp:
+          routingKey: notification.identity.user.created.v1
+          exchange:
+            name: notification.events
+            type: topic
+
+    NotificationPassengerCreatedEvent:
+      name: notification.passenger.created.v1
+      version: '1'
+      title: Notification - Passenger Created
+      summary: Notification event for passenger creation.
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/EventEnvelopeBase'
+      bindings:
+        amqp:
+          routingKey: notification.passenger.created.v1
+          exchange:
+            name: notification.events
+            type: topic
+
+    # ─── Webhook Internal Events (Vert.x EventBus only) ──
+    WebhookKeycloakPayload:
+      name: identity.webhook.keycloak
+      version: '1'
+      title: Keycloak Webhook Internal Event
+      summary: Internal event dispatched after receiving a Keycloak admin event webhook.
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/WebhookKeycloakPayloadSchema'
+
+    WebhookPayloadPayload:
+      name: identity.webhook.payload
+      version: '1'
+      title: Payload Webhook Internal Event
+      summary: Internal event for direct user creation via payload webhook.
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/WebhookPayloadPayloadSchema'
+
+    TenantConfigRequest:
+      name: identity.get-client-config
+      version: '1'
+      title: Tenant Config Request
+      summary: Request-reply message to fetch Keycloak tenant configuration.
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/TenantConfigRequestSchema'
+
+    TenantConfigResponse:
+      name: identity.get-client-config.response
+      version: '1'
+      title: Tenant Config Response
+      summary: Response with Keycloak client configuration.
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/TenantConfigResponseSchema'
+
+  schemas:
+    # ─── Base Event Envelope ───────────────────────────────
+    EventEnvelopeBase:
+      type: object
+      description: |
+        Base event envelope shared by all domain events in the User Bounded Context.
+        All events carry these fields for tracing, correlation, and idempotency.
+      required:
+        - aggregateId
+        - aggregateType
+        - eventType
+        - eventVersion
+        - correlationId
+        - producer
+        - eventId
+        - occurredOn
+      properties:
+        aggregateId:
+          type: string
+          description: UUID of the aggregate root (e.g. Keycloak user ID)
+        aggregateType:
+          type: string
+          description: Type of the aggregate root (e.g. "User")
+        eventType:
+          type: string
+          description: |
+            Fully qualified event type with version suffix.
+            Examples: identity.user.created.v1, identity.user.deleted.v1
+        eventVersion:
+          type: integer
+          minimum: 1
+          description: Schema version of this event type
+        correlationId:
+          type: string
+          description: UUID correlating related events across services
+        causationId:
+          type: string
+          description: ID of the event that directly caused this event
+        traceId:
+          type: string
+          description: OpenTelemetry trace ID for distributed tracing
+        spanId:
+          type: string
+          description: OpenTelemetry span ID
+        producer:
+          type: string
+          description: Service/module that produced the event (e.g. "user-service")
+        actorId:
+          type: string
+          description: ID of the user or system that triggered the event
+        tenantId:
+          type: string
+          description: Tenant identifier for multi-tenant scenarios
+        eventId:
+          type: string
+          format: uuid
+          description: Unique event instance UUID (used for idempotency)
+        occurredOn:
+          type: string
+          format: date-time
+          description: ISO-8601 timestamp when the event occurred
+
+    # ─── User Created Event ───────────────────────────────
+    UserCreatedEventPayload:
+      type: object
+      description: |
+        Full payload for identity.user.created.v1 event.
+        Extends the base envelope with user-specific fields.
+      allOf:
+        - $ref: '#/components/schemas/EventEnvelopeBase'
+        - type: object
+          required:
+            - email
+            - userType
+          properties:
+            email:
+              type: string
+              format: email
+              description: User email address
+            userType:
+              type: string
+              enum: [PASSENGER, ADMIN]
+              description: |
+                High-level user type for event routing. Determines which downstream module processes the event:
+                - PASSENGER: Passenger module creates a passenger record
+                - ADMIN: Admin module handles the user
+                Derived from Keycloak composite role (basic/standard/premium → PASSENGER, editor/admin/super-admin → ADMIN)
+            clientRoles:
+              type: array
+              items:
+                type: string
+                enum: [basic, standard, premium, editor, admin, super-admin]
+              description: |
+                Keycloak composite roles assigned to the user. Used for authorization decisions.
+                - Passenger roles: basic, standard, premium
+                - Admin roles: editor, admin, super-admin
+                These map directly to Keycloak client-level composite roles.
+
+    # ─── User Deleted Event ────────────────────────────────
+    UserDeletedEventPayload:
+      type: object
+      description: |
+        Full payload for identity.user.deleted.v1 event.
+        Triggered by Keycloak AdminEvent DELETE+USER (admin UI deletion).
+        Extends the base envelope with user identity fields (email, userType)
+        so that external consumers can identify the deleted user without
+        needing to query the Identity module.
+      allOf:
+        - $ref: '#/components/schemas/EventEnvelopeBase'
+        - type: object
+          properties:
+            email:
+              type: string
+              format: email
+              description: Email address of the deleted user
+            userType:
+              type: string
+              enum: [PASSENGER, ADMIN]
+              description: User type at the time of deletion
+
+    # ─── Webhook Keycloak Payload (Internal) ──────────────
+    WebhookKeycloakPayloadSchema:
+      type: object
+      description: |
+        Internal event dispatched after KeycloakWebhookController receives
+        a Keycloak event webhook. Consumed by KeycloakWebhookConsumer.
+        For REGISTER events: sourced from Keycloak Event (user self-registration).
+        For DELETE events: sourced from Keycloak AdminEvent (admin UI deletion).
+        The userId field comes from different sources depending on the event type:
+        - REGISTER: from Event.getUserId()
+        - DELETE: extracted from AdminEvent.resourcePath ("users/{uuid}")
+      required:
+        - eventType
+        - userId
+        - clientId
+      properties:
+        eventType:
+          type: string
+          enum: [REGISTER, DELETE]
+          description: |
+            REGISTER = user self-registration via Keycloak Event.
+            DELETE = admin-initiated user deletion via Keycloak AdminEvent.
+        userId:
+          type: string
+          description: |
+            Keycloak user UUID. For REGISTER, this is the registered user.
+            For DELETE, this is the deleted user extracted from resourcePath.
+        clientId:
+          type: string
+          description: Keycloak client UUID that triggered the event
+        data:
+          type: object
+          additionalProperties:
+            type: string
+          description: Flattened Keycloak event details (email, username, etc.)
+        traceParent:
+          type: string
+          description: W3C Trace Context traceparent header value
+        traceState:
+          type: string
+          description: W3C Trace Context tracestate header value
+
+    # ─── Webhook Payload (Internal) ────────────────────────
+    WebhookPayloadPayloadSchema:
+      type: object
+      description: |
+        Internal event for direct user creation via payload webhook.
+        Maps to WebhookPayloadPayload Java record.
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
+          description: User email to register
+        password:
+          type: string
+          description: Initial password
+        clientId:
+          type: string
+          description: Keycloak client name for default role lookup
+        role:
+          type: string
+          description: Specific role to assign (overrides defaults)
+
+    # ─── Tenant Config Request/Response ────────────────────
+    TenantConfigRequestSchema:
+      type: string
+      description: |
+        Client name string sent to request Keycloak tenant configuration.
+        Defaults to "dashboard-client" if null/blank.
+
+    TenantConfigResponseSchema:
+      type: object
+      description: |
+        Keycloak tenant configuration returned by TenantConfigHandler.
+        Contains OAuth2 client credentials and auth server URL.
+      properties:
+        clientId:
+          type: string
+          description: Keycloak client ID (UUID)
+        clientSecret:
+          type: string
+          description: Keycloak client secret
+        authServerUrl:
+          type: string
+          description: Keycloak auth server base URL

@@ -18,6 +18,8 @@ import org.keycloak.events.Event;
 import org.keycloak.events.EventListenerProvider;
 import org.keycloak.events.EventType;
 import org.keycloak.events.admin.AdminEvent;
+import org.keycloak.events.admin.OperationType;
+import org.keycloak.events.admin.ResourceType;
 import org.keycloak.models.AbstractKeycloakTransaction;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakTransactionManager;
@@ -64,7 +66,7 @@ public class ObservabilityEventListenerProvider implements EventListenerProvider
         this.meterRegistry = meterRegistry;
         this.httpClient = httpClient;
 
-        this.registerCounter = Counter.builder("keycloak.identity.user.registered.total")
+        this.registerCounter = Counter.builder("keycloak.identity.user.created.total")
             .description("Total user registrations via Keycloak")
             .tag("realm", "quarkus")
             .register(meterRegistry);
@@ -112,9 +114,6 @@ public class ObservabilityEventListenerProvider implements EventListenerProvider
             if (event.getType() == EventType.REGISTER) {
                 registerCounter.increment();
                 sendWebhookAfterCommit(event);
-            } else if (event.getType() == EventType.DELETE_ACCOUNT) {
-                deleteCounter.increment();
-                sendWebhookAfterCommit(event);
             } else if (event.getType() == EventType.LOGIN) {
                 loginCounter.increment();
             } else if (event.getType() == EventType.LOGIN_ERROR) {
@@ -147,6 +146,12 @@ public class ObservabilityEventListenerProvider implements EventListenerProvider
             .startSpan();
         
         try (Scope scope = span.makeCurrent()) {
+            if (event.getOperationType() == OperationType.DELETE
+                && event.getResourceType() == ResourceType.USER) {
+                deleteCounter.increment();
+                sendAdminWebhookAfterCommit(event);
+            }
+
             if (event.getError() != null) {
                 span.setAttribute("keycloak.admin.error", event.getError());
                 span.setStatus(StatusCode.ERROR, event.getError());
@@ -169,6 +174,21 @@ public class ObservabilityEventListenerProvider implements EventListenerProvider
                 sendWebhookWithTraceContext(event, currentContext);
             }
             
+            @Override
+            protected void rollbackImpl() {
+                // No-op on rollback
+            }
+        });
+    }
+
+    private void sendAdminWebhookAfterCommit(AdminEvent event) {
+        Context currentContext = Context.current();
+        session.getTransactionManager().enlistAfterCompletion(new AbstractKeycloakTransaction() {
+            @Override
+            protected void commitImpl() {
+                sendAdminWebhookWithTraceContext(event, currentContext);
+            }
+
             @Override
             protected void rollbackImpl() {
                 // No-op on rollback
@@ -217,6 +237,49 @@ public class ObservabilityEventListenerProvider implements EventListenerProvider
             }
         }
     }
+
+    private void sendAdminWebhookWithTraceContext(AdminEvent event, Context context) {
+        int maxRetries = 3;
+        for (int attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                String payload = buildAdminEventPayload(event);
+
+                HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
+                    .uri(URI.create(webhookUrl))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(payload));
+
+                TextMapPropagator propagator = GlobalOpenTelemetry.getPropagators().getTextMapPropagator();
+                Map<String, String> headers = new HashMap<>();
+                propagator.inject(context, headers, (carrier, key, value) -> carrier.put(key, value));
+                headers.forEach(requestBuilder::header);
+
+                HttpRequest request = requestBuilder.build();
+                httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+                log.infof("Webhook sent for admin event %s/%s with trace context (attempt %d/%d)",
+                    event.getOperationType(), event.getResourceType(), attempt, maxRetries);
+                return;
+            } catch (Exception e) {
+                if (attempt < maxRetries) {
+                    long delayMs = (long) Math.pow(2, attempt - 1) * 1000;
+                    log.warnf("Webhook attempt %d/%d failed for admin event %s/%s: %s — retrying in %dms",
+                        attempt, maxRetries, event.getOperationType(), event.getResourceType(), e.getMessage(), delayMs);
+                    try {
+                        Thread.sleep(delayMs);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        log.warnf("Webhook retry interrupted for admin event %s/%s",
+                            event.getOperationType(), event.getResourceType());
+                        return;
+                    }
+                } else {
+                    log.errorf("Webhook failed after %d attempts for admin event %s/%s: %s",
+                        maxRetries, event.getOperationType(), event.getResourceType(), e.getMessage());
+                }
+            }
+        }
+    }
     
     private String buildEventPayload(Event event) {
         // Build JSON matching the existing KeycloakDTO structure the webhook controller expects
@@ -235,6 +298,36 @@ public class ObservabilityEventListenerProvider implements EventListenerProvider
             return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(payload);
         } catch (Exception e) {
             log.warnf("Failed to serialize event payload: %s", e.getMessage());
+            return "{}";
+        }
+    }
+
+    private String buildAdminEventPayload(AdminEvent event) {
+        // Maps AdminEvent fields to KeycloakDTO structure. Deleted user ID comes from resourcePath ("users/{uuid}"), not getUserId().
+        Map<String, Object> payload = new HashMap<>();
+        if (event.getId() != null) payload.put("id", event.getId());
+        payload.put("time", event.getTime());
+        payload.put("type", "DELETE");
+        if (event.getRealmId() != null) payload.put("realmId", event.getRealmId());
+        if (event.getAuthDetails() != null) {
+            if (event.getAuthDetails().getClientId() != null)
+                payload.put("clientId", event.getAuthDetails().getClientId());
+            if (event.getAuthDetails().getUserId() != null)
+                payload.put("authUserId", event.getAuthDetails().getUserId());
+            if (event.getAuthDetails().getIpAddress() != null)
+                payload.put("ipAddress", event.getAuthDetails().getIpAddress());
+        }
+        String resourcePath = event.getResourcePath();
+        if (resourcePath != null && resourcePath.startsWith("users/")) {
+            payload.put("userId", resourcePath.substring("users/".length()));
+        }
+        if (event.getDetails() != null) payload.put("details", event.getDetails());
+        if (event.getError() != null) payload.put("error", event.getError());
+
+        try {
+            return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(payload);
+        } catch (Exception e) {
+            log.warnf("Failed to serialize admin event payload: %s", e.getMessage());
             return "{}";
         }
     }

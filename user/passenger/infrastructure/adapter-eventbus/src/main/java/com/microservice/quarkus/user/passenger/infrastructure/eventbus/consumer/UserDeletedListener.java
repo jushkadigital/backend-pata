@@ -2,6 +2,7 @@ package com.microservice.quarkus.user.passenger.infrastructure.eventbus.consumer
 
 import com.microservice.quarkus.user.passenger.application.service.PassengerService;
 import com.microservice.quarkus.user.passenger.infrastructure.eventbus.acl.UserDeletedEventDTO;
+import com.microservice.quarkus.user.shared.application.outbox.IdempotencyStore;
 
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanContext;
@@ -26,16 +27,18 @@ public class UserDeletedListener {
   private static final Logger log = LoggerFactory.getLogger(UserDeletedListener.class);
 
   private final PassengerService passengerService;
+  private final IdempotencyStore idempotencyStore;
 
   @Inject
   Tracer tracer;
 
   @Inject
-  public UserDeletedListener(PassengerService passengerService) {
+  public UserDeletedListener(PassengerService passengerService, IdempotencyStore idempotencyStore) {
     this.passengerService = passengerService;
+    this.idempotencyStore = idempotencyStore;
   }
 
-  @ConsumeEvent("identity.user.deleted")
+  @ConsumeEvent("identity.user.deleted.v1")
   @Blocking
   public void onUserDeleted(String event) {
     UserDeletedEventDTO dto = new JsonObject(event).mapTo(UserDeletedEventDTO.class);
@@ -57,6 +60,16 @@ public class UserDeletedListener {
     }
 
     try (Scope scope = span.makeCurrent()) {
+      if (dto.eventId() == null) {
+        log.warn("Passenger Module: Missing eventId — skipping invalid event");
+        return;
+      }
+
+      if (!idempotencyStore.tryAcquire(dto.eventId().toString(), "passenger-delete-inbound")) {
+        log.info("Passenger Module: Idempotent skip — eventId={} already processed", dto.eventId());
+        return;
+      }
+
       log.info("Passenger Module: Received delete event for aggregateId={}", dto.aggregateId());
 
       try {

@@ -5,14 +5,18 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import com.microservice.quarkus.user.identity.application.api.ClientIdentityProvider;
+import com.microservice.quarkus.user.identity.application.api.GroupIdentityProvider;
 import com.microservice.quarkus.user.identity.application.api.IdentitySyncRepository;
 import com.microservice.quarkus.user.identity.application.api.KeycloakProvider;
+import com.microservice.quarkus.user.identity.application.api.RoleIdentityProvider;
 import com.microservice.quarkus.user.identity.application.dto.KeycloakUserDTO;
 import com.microservice.quarkus.user.identity.application.dto.SyncStatus;
 import com.microservice.quarkus.user.identity.application.dto.UserSyncRecord;
-import com.microservice.quarkus.user.identity.application.dto.UserType;
 import com.microservice.quarkus.user.identity.application.service.UserService;
 import com.microservice.quarkus.user.identity.infrastructure.webhook.event.WebhookKeycloakPayload;
+import com.microservice.quarkus.user.shared.application.outbox.EventMetadata;
+import com.microservice.quarkus.user.shared.application.outbox.IdempotencyStore;
+import com.microservice.quarkus.user.shared.application.outbox.TraceContextProvider;
 import com.microservice.quarkus.user.shared.infrastructure.eventbus.CorrelationIdInterceptor;
 
 import io.opentelemetry.api.trace.Span;
@@ -27,6 +31,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.lang.reflect.Field;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -49,6 +54,18 @@ class KeycloakWebhookConsumerTest {
     IdentitySyncRepository syncRepository;
 
     @Mock
+    IdempotencyStore idempotencyStore;
+
+    @Mock
+    GroupIdentityProvider groupIdentityProvider;
+
+    @Mock
+    RoleIdentityProvider roleIdentityProvider;
+
+    @Mock
+    TraceContextProvider traceContextProvider;
+
+    @Mock
     Tracer tracer;
 
     @BeforeEach
@@ -59,10 +76,12 @@ class KeycloakWebhookConsumerTest {
         lenient().when(spanBuilder.setParent(any())).thenReturn(spanBuilder);
         lenient().when(spanBuilder.startSpan()).thenReturn(span);
         lenient().when(span.makeCurrent()).thenReturn(mock(Scope.class));
+        lenient().when(idempotencyStore.tryAcquire(anyString(), anyString())).thenReturn(true);
+        lenient().when(traceContextProvider.current()).thenReturn(EventMetadata.empty());
     }
 
     private KeycloakWebhookConsumer createConsumer() {
-        KeycloakWebhookConsumer consumer = new KeycloakWebhookConsumer(clientService, keycloakProvider, userService, correlationIdInterceptor, syncRepository);
+        KeycloakWebhookConsumer consumer = new KeycloakWebhookConsumer(clientService, keycloakProvider, userService, correlationIdInterceptor, syncRepository, idempotencyStore, groupIdentityProvider, roleIdentityProvider, traceContextProvider);
         try {
             Field tracerField = KeycloakWebhookConsumer.class.getDeclaredField("tracer");
             tracerField.setAccessible(true);
@@ -95,7 +114,8 @@ class KeycloakWebhookConsumerTest {
             cmd.email().equals("user@example.com") &&
             cmd.externalId().equals(userId) &&
             cmd.isFromKeycloak() &&
-            "PASSENGER".equals(cmd.type())
+            cmd.userType().equals("PASSENGER") &&
+            cmd.roles().contains("basic")
         ), eq("corr-123"));
     }
 
@@ -117,7 +137,8 @@ class KeycloakWebhookConsumerTest {
         createConsumer().processKeycloakEvent(payload);
 
         verify(userService).register(argThat(cmd ->
-            "ADMIN".equals(cmd.type())
+            cmd.userType().equals("ADMIN") &&
+            cmd.roles().contains("editor")
         ), eq("corr-456"));
     }
 
@@ -195,7 +216,8 @@ class KeycloakWebhookConsumerTest {
             UUID.randomUUID().toString(),
             "user@example.com",
             userId,
-            UserType.PASSENGER,
+            "PASSENGER",
+            List.of("basic"),
             SyncStatus.SYNCED,
             null,
             null
@@ -218,7 +240,8 @@ class KeycloakWebhookConsumerTest {
             UUID.randomUUID().toString(),
             "user@example.com",
             userId,
-            UserType.PASSENGER,
+            "PASSENGER",
+            List.of("basic"),
             SyncStatus.PENDING,
             null,
             null

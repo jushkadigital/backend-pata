@@ -9,7 +9,7 @@ services:
     container_name: quarkus-app-prod
     restart: always
     env_file:
-      - .env
+      - .env.prod
     expose:
       - "8081"
     depends_on:
@@ -20,10 +20,32 @@ services:
       - red-compartida
       - proxiable
     environment:
+      # Database — Quarkus reads these via ${DB_URL}, ${DB_USER}, ${DB_PASSWORD}
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+
+      # Keycloak
       KEYCLOAK_INTERNAL_URL: http://keycloak-prod:8080
-      KEYCLOAK_ADMIN_USER: adminpds
-      KEYCLOAK_ADMIN_PASSWORD: adminpds
-      QUARKUS_OIDC_TOKEN_ISSUER: any
+      KEYCLOAK_ADMIN_CLIENT_ID: ${KEYCLOAK_ADMIN_CLIENT_ID}
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET}
+
+      # RabbitMQ
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+
+      # Vault
+      VAULT_URL: ${VAULT_URL}
+      VAULT_USERNAME: ${VAULT_USERNAME}
+      VAULT_PASSWORD: ${VAULT_PASSWORD}
+
+      # OpenTelemetry
+      OTEL_EXPORTER_ENDPOINT: ${OTEL_EXPORTER_ENDPOINT:-http://otel-collector:4317}
+
+      # Quarkus profile
+      QUARKUS_PROFILE: prod
     cpus: 1.0
     mem_limit: 1024m
     mem_reservation: 512m
@@ -42,9 +64,9 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      
+
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aa} -d ${POSTGRES_DB:-aa}"]  # Usa defaults si no seteados
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aa} -d ${POSTGRES_DB:-aa}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -58,16 +80,34 @@ services:
     mem_reservation: 384m
     pids_limit: 200
 
-    
+
+  # ----------------------------------------------------------------
+  # 3. RABBITMQ
+  # ----------------------------------------------------------------
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq-prod
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    ports:
+      - "15672:15672"
+    networks:
+      - prod-network
+    cpus: 0.5
+    mem_limit: 512m
+
+
 volumes:
   postgres_data:
 
 networks:
   proxiable:
     external: true
-    name: proxiable # Asegúrate de que este nombre coincida exactamente con tu red externa
+    name: proxiable
   prod-network:
     driver: bridge
   red-compartida:
-    external: true      # <--- ¡ESTO ES LO IMPORTANTE!
-    name: red-compartida # Asegura que busque el nombre exacto
+    external: true
+    name: red-compartida

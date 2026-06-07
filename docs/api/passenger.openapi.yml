@@ -1,0 +1,168 @@
+openapi: '3.0.3'
+info:
+  title: Passenger Module REST API
+  version: '2.0'
+  description: |
+    Complete REST API contract for the Passenger module.
+    Covers passenger profile retrieval and onboarding completion.
+
+    ## Authentication
+    All endpoints require a valid JWT Bearer token. The user's Keycloak subject ID
+    is extracted from the JWT `sub` claim to identify the passenger.
+
+  contact:
+    name: API Support
+    url: http://www.example.com/support
+    email: support@example.com
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+
+servers:
+  - url: /
+    description: Relative to service root
+
+tags:
+  - name: Me
+    description: Passenger profile operations (self-service)
+
+paths:
+  /api/passengers/me:
+    get:
+      tags: [Me]
+      operationId: getPassengerInfo
+      summary: Get current passenger profile
+      description: |
+        Returns the authenticated passenger's profile information.
+        The passenger is identified by the `sub` claim in the JWT.
+      responses:
+        '200':
+          description: Passenger profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+        '404':
+          description: Passenger not found (not yet registered via event flow)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        '400':
+          description: Invalid token or missing identity
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+
+  /api/passengers/complete:
+    post:
+      tags: [Me]
+      operationId: completePassengerProfile
+      summary: Complete passenger onboarding profile
+      description: |
+        Submits personal information to complete the passenger profile.
+        The passenger must already exist (created via `identity.user.created` event).
+        After completion, `onboardingCompleted` is set to `true`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteRequest'
+      responses:
+        '200':
+          description: Profile completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseMessage'
+        '404':
+          description: Passenger not found (externalId from JWT has no matching record)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        '400':
+          description: Invalid request data (missing required fields)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+
+components:
+  schemas:
+    Me:
+      type: object
+      description: Passenger profile response
+      required:
+        - id
+        - email
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+          description: Internal passenger UUID
+        email:
+          type: string
+          format: email
+          description: Passenger email (from Keycloak)
+        externalId:
+          type: string
+          description: Keycloak subject ID
+        onboardingCompleted:
+          type: boolean
+          description: Whether the passenger has completed their profile
+
+    CompleteRequest:
+      type: object
+      description: Request to complete passenger onboarding profile
+      required:
+        - firstNames
+        - lastNames
+        - dni
+        - phone
+      properties:
+        firstNames:
+          type: string
+          minLength: 1
+          description: Passenger first names
+        lastNames:
+          type: string
+          minLength: 1
+          description: Passenger last names
+        dni:
+          type: string
+          minLength: 1
+          description: National identification document number
+        phone:
+          type: string
+          minLength: 1
+          description: Phone number
+
+    ResponseMessage:
+      type: object
+      description: Success response with message
+      properties:
+        message:
+          type: string
+          description: Response message
+
+    ResponseError:
+      type: object
+      description: Error response
+      properties:
+        error:
+          type: string
+          description: Error description
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Keycloak-issued JWT token
+
+security:
+  - BearerAuth: []

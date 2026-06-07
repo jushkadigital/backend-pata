@@ -7,6 +7,7 @@ import com.microservice.quarkus.user.shared.application.outbox.OutboxEventReposi
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanBuilder;
 import io.opentelemetry.api.trace.SpanContext;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.TraceFlags;
@@ -97,13 +98,20 @@ public class OutboxEventPublisher {
 
       try {
         String topic = getTopicForEvent(event.getEventType());
+        String exchange = getExchangeForEventType(event.getEventType());
 
-        Span span = tracer.spanBuilder("outbox.publish." + event.getEventType())
+        SpanBuilder spanBuilder = tracer.spanBuilder("outbox.publish." + event.getEventType())
             .setAttribute("event.type", event.getEventType())
             .setAttribute("event.aggregateId", event.getAggregateId())
             .setAttribute("event.producer", event.getProducer())
             .setAttribute("event.correlationId", event.getCorrelationId())
-            .startSpan();
+            .setAttribute("event.exchange", exchange);
+
+        if (event.getSpecVersion() != null) {
+          spanBuilder.setAttribute("event.specVersion", event.getSpecVersion());
+        }
+
+        Span span = spanBuilder.startSpan();
 
         if (event.getTraceId() != null && !event.getTraceId().isEmpty()
             && event.getSpanId() != null && !event.getSpanId().isEmpty()) {
@@ -129,8 +137,8 @@ public class OutboxEventPublisher {
           outboxEventRepository.update(event);
           eventsPublishedCounter.increment();
 
-          log.info("Published: [{}] {} v{} -> {} (correlationId={}, causationId={}, traceId={})",
-              event.getProducer(), event.getEventType(), event.getEventVersion(), topic,
+          log.info("Published: [{}] {} v{} -> {} (exchange={}, correlationId={}, causationId={}, traceId={})",
+              event.getProducer(), event.getEventType(), event.getEventVersion(), topic, exchange,
               event.getCorrelationId(), event.getCausationId(), event.getTraceId());
         } finally {
           span.end();
@@ -168,18 +176,37 @@ public class OutboxEventPublisher {
 
   private String getTopicForEvent(String eventType) {
     return switch (eventType) {
-      case "identity.user.registered.v1" -> "identity.user.registered";
-      case "identity.user.deleted.v1" -> "identity.user.deleted";
-      case "notification.identity.user.registered.v1" -> "notification.identity.user.registered";
-      case "admin.registered.v1" -> "admin.registered";
-      case "notification.admin.registered.v1" -> "notification.admin.registered";
-      case "passenger.registered.v1" -> "passenger.registered";
-      case "notification.passenger.registered.v1" -> "notification.passenger.registered";
+      case "identity.user.created.v1" -> "identity.user.created.v1";
+      case "identity.user.deleted.v1" -> "identity.user.deleted.v1";
+      case "notification.identity.user.created.v1" -> "notification.identity.user.created.v1";
+      case "passenger.created.v1" -> "passenger.created.v1";
+      case "notification.passenger.created.v1" -> "notification.passenger.created.v1";
       default -> {
         log.warn("Unknown event type: {}", eventType);
-        yield "unknown.event";
+        yield eventType;
       }
     };
+  }
+
+  private String getExchangeForEventType(String eventType) {
+    String domain = getDomainForEventType(eventType);
+    return domain + ".events";
+  }
+
+  private String getDomainForEventType(String eventType) {
+    if (eventType == null) {
+      return "identity";
+    }
+    if (eventType.startsWith("identity.")) {
+      return "identity";
+    }
+    if (eventType.startsWith("passenger.")) {
+      return "passenger";
+    }
+    if (eventType.startsWith("notification.")) {
+      return "notification";
+    }
+    return "identity";
   }
 
   private SpanContext createSpanContextFromHeaders(String traceId, String spanId) {

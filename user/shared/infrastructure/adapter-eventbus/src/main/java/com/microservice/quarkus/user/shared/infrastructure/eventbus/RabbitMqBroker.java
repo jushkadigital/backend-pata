@@ -14,50 +14,81 @@ import java.util.concurrent.CompletionStage;
 @ApplicationScoped
 public class RabbitMqBroker {
 
-  @Inject
-  @Channel("domain-events-out")
-  Emitter<String> emitter;
+    @Inject
+    @Channel("identity-events-out")
+    Emitter<String> identityEmitter;
 
-  public CompletionStage<Void> publish(String routingKey, String jsonPayload, OutboxEvent event) {
-    CompletableFuture<Void> future = new CompletableFuture<>();
+    @Inject
+    @Channel("passenger-events-out")
+    Emitter<String> passengerEmitter;
 
-    var metadataBuilder = OutgoingRabbitMQMetadata.builder()
-        .withRoutingKey(routingKey)
-        .withContentType("application/json");
+    @Inject
+    @Channel("notification-events-out")
+    Emitter<String> notificationEmitter;
 
-    if (event.getCorrelationId() != null) {
-      metadataBuilder.withCorrelationId(event.getCorrelationId());
+    private Emitter<String> getEmitterForEventType(String eventType) {
+        if (eventType == null) {
+            return identityEmitter;
+        }
+        if (eventType.startsWith("identity.")) {
+            return identityEmitter;
+        }
+        if (eventType.startsWith("passenger.")) {
+            return passengerEmitter;
+        }
+        if (eventType.startsWith("notification.")) {
+            return notificationEmitter;
+        }
+        return identityEmitter;
     }
 
-    OutgoingRabbitMQMetadata metadata = metadataBuilder
-        .withHeader("x-event-id", event.getId().toString())
-        .withHeader("x-event-type", event.getEventType())
-        .withHeader("x-event-version", String.valueOf(event.getEventVersion()))
-        .withHeader("x-aggregate-type", event.getAggregateType())
-        .withHeader("x-aggregate-id", event.getAggregateId())
-        .withHeader("x-correlation-id", event.getCorrelationId() != null ? event.getCorrelationId() : "")
-        .withHeader("x-causation-id", event.getCausationId() != null ? event.getCausationId() : "")
-        .withHeader("x-trace-id", event.getTraceId() != null ? event.getTraceId() : "")
-        .withHeader("x-span-id", event.getSpanId() != null ? event.getSpanId() : "")
-        .withHeader("x-producer", event.getProducer())
-        .withHeader("x-actor-id", event.getActorId() != null ? event.getActorId() : "")
-        .withHeader("x-tenant-id", event.getTenantId() != null ? event.getTenantId() : "")
-        .withHeader("x-occurred-at", event.getOccurredOn().toString())
-        .build();
+    public CompletionStage<Void> publish(String routingKey, String jsonPayload, OutboxEvent event) {
+        CompletableFuture<Void> future = new CompletableFuture<>();
 
-    Message<String> message = Message.of(jsonPayload)
-        .addMetadata(metadata)
-        .withAck(() -> {
-          future.complete(null);
-          return CompletableFuture.completedFuture(null);
-        })
-        .withNack(throwable -> {
-          future.completeExceptionally(throwable);
-          return CompletableFuture.completedFuture(null);
-        });
+        Emitter<String> emitter = getEmitterForEventType(event.getEventType());
 
-    emitter.send(message);
+        var metadataBuilder = OutgoingRabbitMQMetadata.builder()
+                .withRoutingKey(routingKey)
+                .withContentType("application/json");
 
-    return future;
-  }
+        if (event.getCorrelationId() != null) {
+            metadataBuilder.withCorrelationId(event.getCorrelationId());
+        }
+
+        OutgoingRabbitMQMetadata.Builder builder = metadataBuilder
+                .withHeader("x-event-id", event.getId().toString())
+                .withHeader("x-event-type", event.getEventType())
+                .withHeader("x-event-version", String.valueOf(event.getEventVersion()))
+                .withHeader("x-aggregate-type", event.getAggregateType())
+                .withHeader("x-aggregate-id", event.getAggregateId())
+                .withHeader("x-correlation-id", event.getCorrelationId() != null ? event.getCorrelationId() : "")
+                .withHeader("x-causation-id", event.getCausationId() != null ? event.getCausationId() : "")
+                .withHeader("x-trace-id", event.getTraceId() != null ? event.getTraceId() : "")
+                .withHeader("x-span-id", event.getSpanId() != null ? event.getSpanId() : "")
+                .withHeader("x-producer", event.getProducer())
+                .withHeader("x-actor-id", event.getActorId() != null ? event.getActorId() : "")
+                .withHeader("x-tenant-id", event.getTenantId() != null ? event.getTenantId() : "")
+                .withHeader("x-occurred-at", event.getOccurredOn().toString());
+
+        if (event.getSpecVersion() != null) {
+            builder.withHeader("x-spec-version", event.getSpecVersion());
+        }
+
+        OutgoingRabbitMQMetadata metadata = builder.build();
+
+        Message<String> message = Message.of(jsonPayload)
+                .addMetadata(metadata)
+                .withAck(() -> {
+                    future.complete(null);
+                    return CompletableFuture.completedFuture(null);
+                })
+                .withNack(throwable -> {
+                    future.completeExceptionally(throwable);
+                    return CompletableFuture.completedFuture(null);
+                });
+
+        emitter.send(message);
+
+        return future;
+    }
 }

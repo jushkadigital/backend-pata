@@ -7,6 +7,6 @@ import java.util.UUID;
 public class PayloadDTO {
   private String email;
   private String password;
-  private String type;
   private UUID clientId;
+  private String role;
 }

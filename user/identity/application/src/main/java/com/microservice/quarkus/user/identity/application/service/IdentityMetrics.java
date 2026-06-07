@@ -14,8 +14,8 @@ public class IdentityMetrics {
 
     @Inject
     public IdentityMetrics(MeterRegistry registry) {
-        registeredCounter = Counter.builder("identity.user.registered.total")
-            .description("Total users registered in identity")
+        registeredCounter = Counter.builder("identity.user.created.total")
+            .description("Total users created in identity")
             .register(registry);
         deletedCounter = Counter.builder("identity.user.deleted.total")
             .description("Total users deleted from identity")

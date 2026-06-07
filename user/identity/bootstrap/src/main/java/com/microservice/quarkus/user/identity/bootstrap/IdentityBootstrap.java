@@ -32,7 +32,7 @@ public class IdentityBootstrap {
   public record RoleDefinition(String name, String description) {
   }
 
-  public record GroupRoleAssignment(String groupPath, List<String> roles) {
+  public record CompositeRoleDefinition(String name, String description, List<String> includes) {
   }
 
   @Inject
@@ -130,79 +130,77 @@ public class IdentityBootstrap {
     String clientId2 = clientIdentityProvider.createClient("frontend-client", frontRedirects);
     log.info("Identity Bootstrap: Client created with ID: {}", clientId2);
 
-    List<List<String>> hierarchy = List.of(
-        List.of("passenger", "premium"),
-        List.of("passenger", "standard"),
-        List.of("passenger", "basic"),
-        List.of("admin", "super-admin"),
-        List.of("admin", "admin"),
-        List.of("admin", "editor"));
+    List<List<String>> flatGroups = List.of(
+        List.of("admins"),
+        List.of("passengers"));
 
-    Map<String, String> groupIds = groupIdentityProvider.createGroupHierarchy(hierarchy);
+    Map<String, String> groupIds = groupIdentityProvider.createGroupHierarchy(flatGroups);
 
     log.info("Identity Bootstrap: Groups created: {}", groupIds);
 
     if (clientId != null && !clientId.isEmpty() && clientId2 != null && !clientId2.isEmpty()) {
-      List<RoleDefinition> rolesAdmin = List.of(
+      List<RoleDefinition> adminPermissions = List.of(
           new RoleDefinition("ADMIN_VIEW", "Permite visualizar el panel de administración"),
           new RoleDefinition("ADMIN_COMMAND", "Permite ejecutar comandos administrativos"),
           new RoleDefinition("CATALOG_CREATE", "Permite crear elementos en el catálogo"),
-          new RoleDefinition("CATALOG_ERASE", "Permite eliminar elementos del catálogo"));
+          new RoleDefinition("CATALOG_ERASE", "Permite eliminar elementos del catálogo"),
+          new RoleDefinition("CMS_ACCESS", "Permite acceder al CMS"));
 
-      List<RoleDefinition> rolesPassenger = List.of(
+      List<RoleDefinition> passengerPermissions = List.of(
           new RoleDefinition("CATALOG_VIEW", "Permite visualizar el catálogo"),
           new RoleDefinition("FORM_COMPLETE", "Permite completar formularios"));
 
-      log.info("Identity Bootstrap: Creating admin roles...");
-      for (RoleDefinition role : rolesAdmin) {
+      log.info("Identity Bootstrap: Creating admin permission roles...");
+      for (RoleDefinition role : adminPermissions) {
         roleService.register(role.name(), role.description(), clientId);
       }
 
-      log.info("Identity Bootstrap: Creating passenger roles...");
-      for (RoleDefinition role : rolesPassenger) {
+      log.info("Identity Bootstrap: Creating passenger permission roles...");
+      for (RoleDefinition role : passengerPermissions) {
         roleService.register(role.name(), role.description(), clientId2);
       }
 
-      List<GroupRoleAssignment> adminPermissions = List.of(
-          new GroupRoleAssignment("admin/super-admin",
-              List.of("ADMIN_VIEW", "ADMIN_COMMAND", "CATALOG_CREATE", "CATALOG_ERASE")),
-          new GroupRoleAssignment("admin/admin",
-              List.of("ADMIN_VIEW", "ADMIN_COMMAND", "CATALOG_CREATE")),
-          new GroupRoleAssignment("admin/editor",
-              List.of("ADMIN_VIEW", "CATALOG_CREATE")));
+      List<CompositeRoleDefinition> adminRoles = List.of(
+          new CompositeRoleDefinition("super-admin", "Administrador con acceso total",
+              List.of("ADMIN_VIEW", "ADMIN_COMMAND", "CATALOG_CREATE", "CATALOG_ERASE", "CMS_ACCESS")),
+          new CompositeRoleDefinition("admin", "Administrador con acceso de gestión",
+              List.of("ADMIN_VIEW", "ADMIN_COMMAND", "CATALOG_CREATE", "CMS_ACCESS")),
+          new CompositeRoleDefinition("editor", "Editor con acceso de creación",
+              List.of("ADMIN_VIEW", "CATALOG_CREATE", "CMS_ACCESS")));
 
-      List<GroupRoleAssignment> passengerPermissions = List.of(
-          new GroupRoleAssignment("passenger/premium",
+      List<CompositeRoleDefinition> passengerRoles = List.of(
+          new CompositeRoleDefinition("premium", "Pasajero premium con acceso completo",
               List.of("CATALOG_VIEW", "FORM_COMPLETE")),
-          new GroupRoleAssignment("passenger/standard",
+          new CompositeRoleDefinition("standard", "Pasajero estándar con acceso básico",
               List.of("CATALOG_VIEW")),
-          new GroupRoleAssignment("passenger/basic",
+          new CompositeRoleDefinition("basic", "Pasajero básico con acceso mínimo",
               List.of("CATALOG_VIEW")));
 
-      log.info("Identity Bootstrap: Assigning admin permissions...");
-      for (GroupRoleAssignment assignment : adminPermissions) {
-        String groupId = groupIds.get(assignment.groupPath());
-        if (groupId != null) {
-          for (String roleName : assignment.roles()) {
-            roleIdentityProvider.assignClientRoleToGroup(groupId, clientId, roleName);
-            log.info("  ✓ Assigned {} to {}", roleName, assignment.groupPath());
-          }
-        } else {
-          log.error("  ✗ Group not found: {}", assignment.groupPath());
-        }
+      log.info("Identity Bootstrap: Creating admin composite roles...");
+      for (CompositeRoleDefinition role : adminRoles) {
+        roleService.registerComposite(role.name(), role.description(), clientId, role.includes());
       }
 
-      log.info("Identity Bootstrap: Assigning passenger permissions...");
-      for (GroupRoleAssignment assignment : passengerPermissions) {
-        String groupId = groupIds.get(assignment.groupPath());
-        if (groupId != null) {
-          for (String roleName : assignment.roles()) {
-            roleIdentityProvider.assignClientRoleToGroup(groupId, clientId2, roleName);
-            log.info("  ✓ Assigned {} to {}", roleName, assignment.groupPath());
-          }
-        } else {
-          log.error("  ✗ Group not found: {}", assignment.groupPath());
-        }
+      log.info("Identity Bootstrap: Creating passenger composite roles...");
+      for (CompositeRoleDefinition role : passengerRoles) {
+        roleService.registerComposite(role.name(), role.description(), clientId2, role.includes());
+      }
+
+      String adminsGroupId = groupIds.get("admins");
+      String passengersGroupId = groupIds.get("passengers");
+
+      if (adminsGroupId != null) {
+        log.info("Identity Bootstrap: Assigning editor role to admins group (base role)...");
+        roleIdentityProvider.assignClientRoleToGroup(adminsGroupId, clientId, "editor");
+      } else {
+        log.error("Identity Bootstrap: Group 'admins' not found");
+      }
+
+      if (passengersGroupId != null) {
+        log.info("Identity Bootstrap: Assigning basic role to passengers group (base role)...");
+        roleIdentityProvider.assignClientRoleToGroup(passengersGroupId, clientId2, "basic");
+      } else {
+        log.error("Identity Bootstrap: Group 'passengers' not found");
       }
     }
 

@@ -48,6 +48,29 @@ public class RoleService {
     return record.name();
   }
 
+  @WithSpan("role.createComposite")
+  @Transactional
+  public String registerComposite(String name, String description, String clientId, List<String> compositeRoleNames) {
+    RoleSyncRecord existing = syncRepository.findByName(name);
+    if (existing != null && existing.syncStatus() == SyncStatus.SYNCED) {
+      return existing.name();
+    }
+
+    RoleSyncRecord record = RoleSyncRecord.createNew(name, description, clientId);
+    record = syncRepository.save(record);
+
+    try {
+      String result = keycloakClient.createCompositeRole(name, description, clientId, compositeRoleNames);
+      record = record.withSyncStatus(SyncStatus.SYNCED);
+      syncRepository.save(record);
+    } catch (Exception e) {
+      record = record.withSyncStatus(SyncStatus.FAILED);
+      syncRepository.save(record);
+    }
+
+    return record.name();
+  }
+
   @WithSpan("role.findAll")
   public List<KeycloakRoleDTO> allRolesKeycloak() {
     return keycloakClient.getAllRoles();

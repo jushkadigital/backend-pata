@@ -28,6 +28,7 @@ public class OutboxEvent {
   private String producer;
   private String actorId;
   private String tenantId;
+  private String specVersion;
   private String eventPayload;
   private Instant occurredOn;
   private Instant publishedAt;
@@ -57,6 +58,26 @@ public class OutboxEvent {
       String eventPayload,
       EventScope scope,
       Instant occurredOn) {
+    return create(eventType, eventVersion, aggregateType, aggregateId, correlationId, causationId,
+        traceId, spanId, producer, actorId, tenantId, null, eventPayload, scope, occurredOn);
+  }
+
+  public static OutboxEvent create(
+      String eventType,
+      Integer eventVersion,
+      String aggregateType,
+      String aggregateId,
+      String correlationId,
+      String causationId,
+      String traceId,
+      String spanId,
+      String producer,
+      String actorId,
+      String tenantId,
+      String specVersion,
+      String eventPayload,
+      EventScope scope,
+      Instant occurredOn) {
     return OutboxEvent.builder()
         .id(UUID.randomUUID())
         .eventType(eventType)
@@ -70,6 +91,7 @@ public class OutboxEvent {
         .producer(producer)
         .actorId(actorId)
         .tenantId(tenantId)
+        .specVersion(specVersion)
         .eventPayload(eventPayload)
         .scope(scope)
         .occurredOn(occurredOn)

@@ -6,5 +6,5 @@ import jakarta.validation.constraints.NotBlank;
 public record CreatePassengerCommand(
     @NotBlank String externalId,
     @Email String email,
-    String type, String subType) {
+    String passengerType) {
 }

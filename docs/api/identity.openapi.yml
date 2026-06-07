@@ -1,0 +1,416 @@
+openapi: '3.0.3'
+info:
+  title: Identity Module REST API
+  version: '2.0'
+  description: |
+    Complete REST API contract for the Identity module.
+    Covers client management, Keycloak admin operations, and inbound webhook endpoints.
+
+    ## Modules
+    - **adapter-rest**: Client management + Keycloak admin
+    - **adapter-webhook**: Inbound webhooks from Keycloak and external providers
+
+  contact:
+    name: API Support
+    url: http://www.example.com/support
+    email: support@example.com
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+
+servers:
+  - url: /
+    description: Relative to service root
+
+tags:
+  - name: Clients
+    description: Client management operations
+  - name: Keycloak Admin
+    description: Keycloak user and role introspection (admin/debug)
+  - name: Webhooks
+    description: Inbound webhook endpoints from external systems
+
+paths:
+  # ─── Clients ──────────────────────────────────────────────
+  /api/identity/clients:
+    get:
+      tags: [Clients]
+      operationId: getClients
+      summary: Get all client summaries
+      description: Returns a map of client IDs to client names registered in Keycloak.
+      responses:
+        '200':
+          description: Map of client ID to client name
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Clients'
+        '204':
+          description: No clients found
+        '404':
+          description: Client service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+
+  # ─── Keycloak Admin ───────────────────────────────────────
+  /keycloak/users:
+    get:
+      tags: [Keycloak Admin]
+      operationId: getKeycloakSyncedUsers
+      summary: List synced user emails
+      description: Returns email addresses of all users in the local identity sync table.
+      responses:
+        '200':
+          description: List of user emails
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+
+  /keycloak/usersk:
+    get:
+      tags: [Keycloak Admin]
+      operationId: getKeycloakDirectUsers
+      summary: List users directly from Keycloak
+      description: Returns email addresses by querying Keycloak API directly.
+      responses:
+        '200':
+          description: List of user emails
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+
+  /keycloak/rolesk:
+    get:
+      tags: [Keycloak Admin]
+      operationId: getKeycloakDirectRoles
+      summary: List roles directly from Keycloak
+      description: Returns role names by querying Keycloak API directly.
+      responses:
+        '200':
+          description: List of role names
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+
+  /keycloak/roles:
+    get:
+      tags: [Keycloak Admin]
+      operationId: getSyncedRoles
+      summary: List synced roles
+      description: Returns all role names from the local role sync table.
+      responses:
+        '200':
+          description: List of role names
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+
+  /keycloak/roles/{clientId}:
+    get:
+      tags: [Keycloak Admin]
+      operationId: getSyncedRolesByClientId
+      summary: List synced roles for a client
+      description: Returns role names associated with a specific client from the local role sync table.
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Keycloak client ID (UUID or name)
+      responses:
+        '200':
+          description: List of role names for the client
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+
+  # ─── Webhooks ─────────────────────────────────────────────
+  /webhooks/keycloak:
+    post:
+      tags: [Webhooks]
+      operationId: receiveKeycloakWebhook
+      summary: Receive Keycloak admin event webhook
+      description: |
+        Endpoint that Keycloak calls when an admin event occurs (REGISTER, DELETE).
+        The controller converts the external KeycloakDTO into an internal WebhookKeycloakPayload
+        and dispatches it to the Vert.x EventBus address `identity.webhook.keycloak` for async processing.
+
+        Only `REGISTER` and `DELETE` event types are processed; others are accepted and ignored.
+      parameters:
+        - name: traceparent
+          in: header
+          required: false
+          schema:
+            type: string
+          description: W3C Trace Context traceparent header for distributed tracing
+        - name: tracestate
+          in: header
+          required: false
+          schema:
+            type: string
+          description: W3C Trace Context tracestate header for distributed tracing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KeycloakWebhookRequest'
+      responses:
+        '202':
+          description: Event accepted for async processing
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+
+  /webhooks/payload:
+    post:
+      tags: [Webhooks]
+      operationId: receivePayloadWebhook
+      summary: Receive user creation payload webhook
+      description: |
+        Endpoint for external identity providers to create users directly.
+        Requires `X-Webhook-Secret` header for authentication.
+        Creates a user in Keycloak and assigns default groups/roles based on client mapping.
+      parameters:
+        - name: X-Webhook-Secret
+          in: header
+          required: true
+          schema:
+            type: string
+          description: Shared webhook secret for authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PayloadWebhookRequest'
+      responses:
+        '200':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayloadWebhookResponse'
+        '401':
+          description: Invalid webhook secret
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+        '202':
+          description: Accepted but email was null (no-op)
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+
+components:
+  schemas:
+    # ─── Common ────────────────────────────────────────────
+    Clients:
+      type: object
+      description: Map of client ID to client name
+      additionalProperties:
+        type: string
+
+    ResponseMessage:
+      type: object
+      description: Success response with message
+      properties:
+        message:
+          type: string
+          description: Response message
+
+    ResponseError:
+      type: object
+      description: Error response
+      properties:
+        error:
+          type: string
+          description: Error description
+
+    User:
+      type: object
+      description: User domain entity (from Identity module)
+      required:
+        - email
+        - type
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+          description: Unique user identifier
+        email:
+          type: string
+          format: email
+          description: User email address
+        externalId:
+          type: string
+          description: Keycloak subject ID
+        type:
+          type: string
+          description: User type
+          enum: [PASSENGER, ADMIN]
+        syncStatus:
+          type: string
+          description: Synchronization status with Keycloak
+          enum: [PENDING, SYNCED, FAILED]
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    # ─── Keycloak Webhook ─────────────────────────────────
+    KeycloakWebhookRequest:
+      type: object
+      description: |
+        Payload sent by Keycloak Admin Event webhooks.
+        Maps to `KeycloakDTO` Java record.
+      required:
+        - type
+        - userId
+        - clientId
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Event UUID
+        time:
+          type: integer
+          format: int64
+          description: Event timestamp (epoch millis)
+        type:
+          type: string
+          description: Keycloak admin event type
+          enum: [REGISTER, DELETE]
+        realmId:
+          type: string
+          format: uuid
+          description: Keycloak realm UUID
+        clientId:
+          type: string
+          format: uuid
+          description: Keycloak client UUID that triggered the event
+        userId:
+          type: string
+          format: uuid
+          description: Keycloak user UUID (subject)
+        ipAddress:
+          type: string
+          description: IP address of the client
+        details:
+          $ref: '#/components/schemas/KeycloakEventDetails'
+
+    KeycloakEventDetails:
+      type: object
+      description: Keycloak admin event details
+      properties:
+        authMethod:
+          type: string
+          description: Authentication method used
+        authType:
+          type: string
+          description: Authentication type
+        registerMethod:
+          type: string
+          description: Registration method
+        lastName:
+          type: string
+          description: User last name
+        firstName:
+          type: string
+          description: User first name
+        redirectURI:
+          type: string
+          description: Redirect URI after auth
+        codeId:
+          type: string
+          format: uuid
+          description: Authorization code ID
+        email:
+          type: string
+          format: email
+          description: User email
+        username:
+          type: string
+          description: Username
+
+    # ─── Payload Webhook ──────────────────────────────────
+    PayloadWebhookRequest:
+      type: object
+      description: |
+        Payload for direct user creation webhook.
+        Maps to `PayloadDTO` Java class.
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
+          description: User email to register in Keycloak
+        password:
+          type: string
+          format: password
+          description: Initial password for the user
+        clientId:
+          type: string
+          format: uuid
+          description: Keycloak client UUID for default role assignment
+        role:
+          type: string
+          description: |
+            Specific role to assign. Overrides default client roles.
+            Common values: basic, standard, premium, editor, admin, super-admin
+
+    PayloadWebhookResponse:
+      type: object
+      description: Response after successful user creation via payload webhook
+      properties:
+        providerid:
+          type: string
+          description: Keycloak user ID (externalId) of the created user
+
+  securitySchemes:
+    BasicAuth:
+      type: http
+      scheme: basic
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    WebhookSecret:
+      type: apiKey
+      in: header
+      name: X-Webhook-Secret
+
+security:
+  - BearerAuth: []

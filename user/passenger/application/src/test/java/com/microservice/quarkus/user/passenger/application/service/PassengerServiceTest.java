@@ -49,7 +49,7 @@ class PassengerServiceTest {
     void register_shouldCreatePassengerWithIncompleteStatus() {
         PassengerService service = createService();
         CreatePassengerCommand cmd = new CreatePassengerCommand(
-                "ext-123", "john@example.com", "PASSENGER", "STANDARD");
+                "ext-123", "john@example.com", "STANDARD");
 
         AtomicReference<Passenger> captured = new AtomicReference<>();
         doAnswer(invocation -> {
@@ -75,13 +75,13 @@ class PassengerServiceTest {
     void register_shouldCreateOutboxEvent() {
         PassengerService service = createService();
         CreatePassengerCommand cmd = new CreatePassengerCommand(
-                "ext-456", "jane@example.com", "PASSENGER", "PREMIUM");
+                "ext-456", "jane@example.com", "PREMIUM");
 
         service.register(cmd);
 
         verify(outboxEventRepository, times(2)).save(argThat(event ->
-                ("passenger.registered.v1".equals(event.getEventType())
-                        || "notification.passenger.registered.v1".equals(event.getEventType()))
+                ("passenger.created.v1".equals(event.getEventType())
+                        || "notification.passenger.created.v1".equals(event.getEventType()))
                         && "Passenger".equals(event.getAggregateType())
                         && !event.getPublished()));
     }
@@ -90,7 +90,7 @@ class PassengerServiceTest {
     void register_shouldSetPremiumType() {
         PassengerService service = createService();
         CreatePassengerCommand cmd = new CreatePassengerCommand(
-                "ext-789", "premium@example.com", "PASSENGER", "PREMIUM");
+                "ext-789", "premium@example.com", "PREMIUM");
 
         AtomicReference<Passenger> captured = new AtomicReference<>();
         doAnswer(invocation -> {
@@ -107,7 +107,7 @@ class PassengerServiceTest {
     void register_shouldSetBasicType() {
         PassengerService service = createService();
         CreatePassengerCommand cmd = new CreatePassengerCommand(
-                "ext-101", "basic@example.com", "PASSENGER", "BASIC");
+                "ext-101", "basic@example.com", "BASIC");
 
         AtomicReference<Passenger> captured = new AtomicReference<>();
         doAnswer(invocation -> {
