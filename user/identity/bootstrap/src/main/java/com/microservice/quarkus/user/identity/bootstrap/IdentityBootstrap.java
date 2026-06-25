@@ -15,6 +15,7 @@ import com.microservice.quarkus.user.identity.application.service.UserService;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -28,6 +29,8 @@ public class IdentityBootstrap {
 
   private static final int MAX_RETRIES = 200;
   private static final int RETRY_DELAY_MS = 3000;
+  private static final int PROD_MAX_RETRIES = 10;
+  private static final int PROD_RETRY_DELAY_MS = 5000;
 
   public record RoleDefinition(String name, String description) {
   }
@@ -62,6 +65,7 @@ public class IdentityBootstrap {
   @ConfigProperty(name = "quarkus.keycloak.admin-client.server-url", defaultValue = "NOT_SET")
   String keycloakServerUrl;
 
+  @ActivateRequestContext
   void onStart(@Observes @Priority(10) StartupEvent ev) {
     log.info(">>(10) Iniciando Identity Bootstrap...");
     log.info(">>(10) Profile: {}", profile);
@@ -70,14 +74,17 @@ public class IdentityBootstrap {
     try {
       if ("dev".equals(profile) || "test".equals(profile)) {
         log.info(">>(10) Dev/Test mode detected, waiting for Keycloak connection...");
-        if (!waitForKeycloak()) {
+        if (!waitForKeycloak(MAX_RETRIES, RETRY_DELAY_MS)) {
 
           log.error("Identity Bootstrap: Failed to connect to Keycloak after retries");
           return;
         }
       } else {
-
-        realmIdentityProvider.getRealm();
+        log.info(">>(10) Prod mode detected, verifying Keycloak connection...");
+        if (!waitForKeycloak(PROD_MAX_RETRIES, PROD_RETRY_DELAY_MS)) {
+          log.error("Identity Bootstrap: Failed to connect to Keycloak after retries");
+          return;
+        }
       }
 
       initializeKeycloak();
@@ -86,10 +93,10 @@ public class IdentityBootstrap {
     }
   }
 
-  private boolean waitForKeycloak() {
-    for (int i = 1; i <= MAX_RETRIES; i++) {
+  private boolean waitForKeycloak(int maxRetries, int retryDelayMs) {
+    for (int i = 1; i <= maxRetries; i++) {
       try {
-        log.info("Identity Bootstrap: Attempting to connect to Keycloak at {} (attempt {}/{})", keycloakServerUrl, i, MAX_RETRIES);
+        log.info("Identity Bootstrap: Attempting to connect to Keycloak at {} (attempt {}/{})", keycloakServerUrl, i, maxRetries);
         realmIdentityProvider.getRealm();
         log.info("Identity Bootstrap: Connected to Keycloak successfully");
         return true;
@@ -99,9 +106,9 @@ public class IdentityBootstrap {
         } else {
           log.info("Identity Bootstrap: Keycloak not ready yet - {}", e.getClass().getSimpleName());
         }
-        if (i < MAX_RETRIES) {
+        if (i < maxRetries) {
           try {
-            Thread.sleep(RETRY_DELAY_MS);
+            Thread.sleep(retryDelayMs);
           } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
             return false;

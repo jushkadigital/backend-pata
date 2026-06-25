@@ -15,3 +15,9 @@ quarkus:
         grant-type: client-credentials
         client-id: ${KEYCLOAK_ADMIN_CLIENT_ID:quarkus-admin-client}
         secret: ${KEYCLOAK_ADMIN_CLIENT_SECRET}
+    http:
+      client:
+        connect-timeout: 30S
+        idle-timeout: 5M
+    rest-client:
+      connect-timeout: 30S

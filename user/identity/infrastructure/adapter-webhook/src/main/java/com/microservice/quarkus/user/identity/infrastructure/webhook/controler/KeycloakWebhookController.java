@@ -14,6 +14,7 @@ import com.microservice.quarkus.user.identity.infrastructure.webhook.event.Webho
 import io.vertx.mutiny.core.eventbus.EventBus; // Importante: versión Mutiny
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
 @Path("/webhooks/keycloak")
@@ -28,6 +29,7 @@ public class KeycloakWebhookController {
   ObjectMapper mapper;
 
   @POST
+  @Consumes(MediaType.APPLICATION_JSON)
   public Response receiveEvent(KeycloakDTO dto, @HeaderParam("traceparent") String traceParent, @HeaderParam("tracestate") String traceState) {
 
     log.info("Webhook received: {}", (dto != null ? dto.getType() : "null"));
