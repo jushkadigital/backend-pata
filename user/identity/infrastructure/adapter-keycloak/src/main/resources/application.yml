@@ -11,10 +11,10 @@ quarkus:
     keycloak:
       admin-client:
         server-url: ${KEYCLOAK_INTERNAL_URL}
-        realm: quarkus
-        grant-type: client-credentials
-        client-id: ${KEYCLOAK_ADMIN_CLIENT_ID:quarkus-admin-client}
-        secret: ${KEYCLOAK_ADMIN_CLIENT_SECRET}
+        realm: master
+        grant-type: password
+        username: admin
+        password: ${KEYCLOAK_ADMIN_PASSWORD}
     http:
       client:
         connect-timeout: 30S

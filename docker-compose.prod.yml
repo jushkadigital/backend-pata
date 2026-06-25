@@ -27,8 +27,7 @@ services:
 
       # Keycloak
       KEYCLOAK_INTERNAL_URL: http://keycloak-prod:8080
-      KEYCLOAK_ADMIN_CLIENT_ID: ${KEYCLOAK_ADMIN_CLIENT_ID}
-      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
 
       # RabbitMQ (externo - gestionado en otro docker-compose)
       RABBITMQ_URL: ${RABBITMQ_URL}
