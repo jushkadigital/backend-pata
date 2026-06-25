@@ -7,10 +7,7 @@ rabbitmq-password: admin123
   rabbitmq-host: localhost
 
 "%prod":
-  rabbitmq-host: ${RABBITMQ_HOST}
-  rabbitmq-port: ${RABBITMQ_PORT:5672}
-  rabbitmq-username: ${RABBITMQ_USERNAME}
-  rabbitmq-password: ${RABBITMQ_PASSWORD}
+  rabbitmq-url: ${RABBITMQ_URL}
   mp:
     messaging:
       outgoing:
@@ -21,7 +18,7 @@ rabbitmq-password: admin123
             type: topic
             durable: true
           default-routing-key: "identity.#"
-          connection-uri: amqp://${RABBITMQ_USERNAME}:${RABBITMQ_PASSWORD}@${RABBITMQ_HOST}:${RABBITMQ_PORT:5672}
+          connection-uri: ${RABBITMQ_URL}
         passenger-events-out:
           connector: smallrye-rabbitmq
           exchange:
@@ -29,7 +26,7 @@ rabbitmq-password: admin123
             type: topic
             durable: true
           default-routing-key: "passenger.#"
-          connection-uri: amqp://${RABBITMQ_USERNAME}:${RABBITMQ_PASSWORD}@${RABBITMQ_HOST}:${RABBITMQ_PORT:5672}
+          connection-uri: ${RABBITMQ_URL}
         notification-events-out:
           connector: smallrye-rabbitmq
           exchange:
@@ -37,7 +34,7 @@ rabbitmq-password: admin123
             type: topic
             durable: true
           default-routing-key: "notification.#"
-          connection-uri: amqp://${RABBITMQ_USERNAME}:${RABBITMQ_PASSWORD}@${RABBITMQ_HOST}:${RABBITMQ_PORT:5672}
+          connection-uri: ${RABBITMQ_URL}
 
 mp:
   messaging:

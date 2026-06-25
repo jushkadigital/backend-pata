@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
+import java.util.Optional;
 
 @ApplicationScoped
 public class RabbitMqTopologyDeclarator {
@@ -31,13 +32,21 @@ public class RabbitMqTopologyDeclarator {
     @ConfigProperty(name = "rabbitmq-password")
     String password;
 
+    @ConfigProperty(name = "rabbitmq-url")
+    Optional<String> rabbitmqUrl;
+
     void onStart(@Observes @Priority(50) StartupEvent event) {
         try {
             ConnectionFactory factory = new ConnectionFactory();
-            factory.setHost(host);
-            factory.setPort(port);
-            factory.setUsername(username);
-            factory.setPassword(password);
+
+            if (rabbitmqUrl.isPresent() && !rabbitmqUrl.get().isBlank()) {
+                factory.setUri(rabbitmqUrl.get());
+            } else {
+                factory.setHost(host);
+                factory.setPort(port);
+                factory.setUsername(username);
+                factory.setPassword(password);
+            }
 
             try (Connection connection = factory.newConnection();
                  Channel channel = connection.createChannel()) {

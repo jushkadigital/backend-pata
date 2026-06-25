@@ -30,11 +30,8 @@ services:
       KEYCLOAK_ADMIN_CLIENT_ID: ${KEYCLOAK_ADMIN_CLIENT_ID}
       KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET}
 
-      # RabbitMQ
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      # RabbitMQ (externo - gestionado en otro docker-compose)
+      RABBITMQ_URL: ${RABBITMQ_URL}
 
       # Vault
       VAULT_URL: ${VAULT_URL}
@@ -79,24 +76,6 @@ services:
     mem_limit: 768m
     mem_reservation: 384m
     pids_limit: 200
-
-
-  # ----------------------------------------------------------------
-  # 3. RABBITMQ
-  # ----------------------------------------------------------------
-  rabbitmq:
-    image: rabbitmq:3-management
-    container_name: rabbitmq-prod
-    restart: always
-    environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
-    ports:
-      - "15672:15672"
-    networks:
-      - prod-network
-    cpus: 0.5
-    mem_limit: 512m
 
 
 volumes:
