@@ -13,11 +13,12 @@ quarkus:
         server-url: ${KEYCLOAK_INTERNAL_URL}
         realm: master
         grant-type: password
-        username: admin
+        client-id: admin-cli
+        username: ${KEYCLOAK_ADMIN_USERNAME:admin}
         password: ${KEYCLOAK_ADMIN_PASSWORD}
     http:
       client:
         connect-timeout: 30S
         idle-timeout: 5M
     rest-client:
-      connect-timeout: 30S
+      connect-timeout: 30000

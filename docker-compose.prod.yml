@@ -9,7 +9,7 @@ services:
     container_name: quarkus-app-prod
     restart: always
     env_file:
-      - .env.prod
+      - .env
     expose:
       - "8081"
     depends_on:
@@ -27,6 +27,7 @@ services:
 
       # Keycloak
       KEYCLOAK_INTERNAL_URL: http://keycloak-prod:8080
+      KEYCLOAK_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
 
       # RabbitMQ (externo - gestionado en otro docker-compose)

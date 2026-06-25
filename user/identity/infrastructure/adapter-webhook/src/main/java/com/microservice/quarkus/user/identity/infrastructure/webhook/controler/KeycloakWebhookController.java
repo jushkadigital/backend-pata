@@ -12,6 +12,7 @@ import com.microservice.quarkus.user.identity.infrastructure.webhook.controler.d
 import com.microservice.quarkus.user.identity.infrastructure.webhook.event.WebhookKeycloakPayload;
 
 import io.vertx.mutiny.core.eventbus.EventBus; // Importante: versión Mutiny
+import jakarta.annotation.security.PermitAll;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -29,6 +30,7 @@ public class KeycloakWebhookController {
   ObjectMapper mapper;
 
   @POST
+  @PermitAll
   @Consumes(MediaType.APPLICATION_JSON)
   public Response receiveEvent(KeycloakDTO dto, @HeaderParam("traceparent") String traceParent, @HeaderParam("tracestate") String traceState) {
 

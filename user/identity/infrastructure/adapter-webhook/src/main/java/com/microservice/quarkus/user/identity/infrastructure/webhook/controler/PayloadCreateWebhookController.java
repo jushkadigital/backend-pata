@@ -15,6 +15,7 @@ import com.microservice.quarkus.user.identity.application.service.UserService;
 import com.microservice.quarkus.user.identity.infrastructure.webhook.controler.dto.PayloadDTO;
 import com.microservice.quarkus.user.shared.infrastructure.eventbus.CorrelationIdInterceptor;
 
+import jakarta.annotation.security.PermitAll;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.Context;
@@ -74,6 +75,7 @@ public class PayloadCreateWebhookController {
   }
 
   @POST
+  @PermitAll
   @Consumes(MediaType.APPLICATION_JSON)
   @Produces(MediaType.APPLICATION_JSON)
   public Response receiveEvent(PayloadDTO dto, @Context HttpHeaders headers) {

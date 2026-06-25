@@ -1,11 +1,10 @@
 {
   "sessionID": "ses_1007329dfffe6IT15dPTXuWRfR",
-  "updatedAt": "2026-06-25T17:13:34.439Z",
+  "updatedAt": "2026-06-25T20:22:53.147Z",
   "sources": {
     "background-task": {
-      "state": "active",
-      "reason": "1 background task(s) active",
-      "updatedAt": "2026-06-25T17:13:34.439Z"
+      "state": "idle",
+      "updatedAt": "2026-06-25T20:22:53.147Z"
     }
   }
 }
